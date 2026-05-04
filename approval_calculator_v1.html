@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>USCIS approval frontier estimator</title>
+<style>
+  :root{
+    --bg:#fafaf7; --surface:#ffffff; --text:#1a1a18; --muted:#6b6b66;
+    --border:#e6e3da; --accent:#185fa5; --accent-bg:#e6f1fb;
+    --warn:#854f0b; --warn-bg:#faeeda; --danger:#a32d2d; --danger-bg:#fcebeb;
+    --success:#3b6d11; --success-bg:#eaf3de;
+    --radius:12px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg);color:var(--text);margin:0;padding:24px;line-height:1.55}
+  .wrap{max-width:680px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  .subtitle{color:var(--muted);font-size:14px;margin-bottom:6px}
+  .source-badge{font-size:12px;color:var(--muted);margin-bottom:24px}
+  .source-badge strong{color:var(--accent);font-weight:600}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+  .mode-row{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+  .mode-btn{flex:1;min-width:140px;padding:12px 8px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;color:var(--muted);font-family:inherit;transition:all 0.15s;line-height:1.3}
+  .mode-btn.active{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);font-weight:500}
+  .mode-btn:hover:not(.active){border-color:var(--muted)}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+  .field label{font-size:13px;color:var(--muted);font-weight:500}
+  input[type="date"],input[type="number"]{padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:15px;font-family:inherit;background:var(--surface);color:var(--text)}
+  input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+  .result-row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;gap:12px}
+  .result-row:last-child{border-bottom:0}
+  .result-row .label{color:var(--muted);flex-shrink:0}
+  .result-row .val{font-weight:500;text-align:right}
+  .headline{font-size:28px;font-weight:600;margin:4px 0 2px}
+  .headline-sub{font-size:13px;color:var(--muted);margin-bottom:16px}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:500;background:var(--accent-bg);color:var(--accent);margin-right:4px}
+  .warn{background:var(--danger-bg);color:var(--danger);padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;margin-top:12px}
+  .ok{background:var(--success-bg);color:var(--success);padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;margin-top:12px}
+  .note{font-size:12px;color:var(--muted);margin-top:16px;line-height:1.6}
+  .disclaimer{font-size:12px;color:var(--muted);margin-top:24px;padding:14px;background:var(--bg);border-radius:var(--radius-sm);line-height:1.6;border:1px solid var(--border)}
+  .disclaimer strong{color:var(--accent);font-weight:600}
+  .data-stamp{font-size:11px;color:var(--muted);text-align:center;margin-top:16px}
+  table.tl{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+  table.tl th{text-align:left;padding:8px 10px;font-weight:500;color:var(--muted);border-bottom:1px solid var(--border);font-size:12px;background:var(--bg)}
+  table.tl td{padding:9px 10px;border-bottom:1px solid var(--border)}
+  table.tl tr.now{background:var(--accent-bg)}
+  table.tl tr.now td{font-weight:500;color:var(--accent)}
+  table.tl tr.match{background:var(--success-bg)}
+  table.tl tr.match td{font-weight:500;color:var(--success)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>USCIS approval frontier estimator</h1>
+<div class="subtitle">Tracks which submission-date batch USCIS is currently approving and projects the queue forward.</div>
+<div class="source-badge">Data sourced from <strong>MyCasesHub</strong> · planning tool, not a guarantee.</div>
+
+<div class="card">
+  <div class="mode-row">
+    <button class="mode-btn active" id="m1">Current batch</button>
+    <button class="mode-btn" id="m2">When will I be approved?</button>
+    <button class="mode-btn" id="m3">When should I submit?</button>
+  </div>
+
+  <div id="pane1"></div>
+
+  <div id="pane2" style="display:none">
+    <div class="field">
+      <label for="submitDate">Your submission date (last_before_approval_date)</label>
+      <input type="date" id="submitDate">
+      <div class="note" style="margin-top:0">The date your case last had a status update before approval.</div>
+    </div>
+  </div>
+
+  <div id="pane3" style="display:none">
+    <div class="field">
+      <label for="expDate">Card expiration date</label>
+      <input type="date" id="expDate">
+    </div>
+    <div class="field">
+      <label for="bufferDays">Safety buffer (days)</label>
+      <input type="number" id="bufferDays" value="30" min="0" max="180" step="1">
+    </div>
+  </div>
+
+  <div id="output" class="card" style="margin-top:16px;margin-bottom:0"></div>
+</div>
+
+<div class="note" id="confidenceNote"></div>
+
+<div class="disclaimer">
+  This calculator is only an estimate based on recent approval data sourced from <strong>MyCasesHub</strong>.
+  It is not official USCIS guidance and cannot guarantee an approval date. Approval timing can change
+  because of workload, holidays, case type, RFEs, weekends, data quality, and USCIS behavior changes.
+  Use this as a planning tool only.
+</div>
+
+<div class="data-stamp" id="dataStamp"></div>
+
+</div>
+
+<script>
+  // =====================================================================
+  // UPDATE EACH WEEK after running analyze.py.
+  // The script writes frontier_constants.json with everything below.
+  // Single-slope, fixed-width model.
+  // =====================================================================
+  const D = {
+    LATEST_APPROVAL_WEEK:   '2026-04-20', // Monday of the most recent approval week
+    LATEST_BATCH_P50:       '2025-11-20', // median LBA approved that week
+    FRONTIER_SLOPE:         2.52,         // LBA-days per calendar week (full sample)
+    FRONTIER_SLOPE_RECENT:  1.90,         // last-5-weeks slope (drift indicator)
+    BATCH_WIDTH_DAYS:       9,            // median p75-p25 width across all weeks
+    FRONTIER_R2:            0.885,        // R² of frontier fit
+    N_WEEKS:                10,
+    N_CASES:                6295,
+  };
+  // =====================================================================
+
+  const fmt = d => d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+  const fmtShort = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
+  const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+  const dayDiff = (a,b) => Math.round((b - a) / 86400000);
+  const rollWk = d => { const x = new Date(d); const w = x.getDay();
+    if (w===6) x.setDate(x.getDate()+2); else if (w===0) x.setDate(x.getDate()+1); return x; };
+
+  const LATEST_AW = new Date(D.LATEST_APPROVAL_WEEK + 'T00:00:00');
+  const LATEST_P50 = new Date(D.LATEST_BATCH_P50 + 'T00:00:00');
+  const HALF_WIDTH = D.BATCH_WIDTH_DAYS / 2;
+
+  function batchAtWeek(weeksAhead) {
+    const center = addDays(LATEST_P50, D.FRONTIER_SLOPE * weeksAhead);
+    return {
+      week: addDays(LATEST_AW, 7 * weeksAhead),
+      p25: addDays(center, -HALF_WIDTH),
+      p50: center,
+      p75: addDays(center, HALF_WIDTH),
+    };
+  }
+
+  function weeksToReach(submitDate) {
+    return dayDiff(LATEST_P50, submitDate) / D.FRONTIER_SLOPE;
+  }
+
+  function setMode(n) {
+    [1,2,3].forEach(i => {
+      document.getElementById('m'+i).classList.toggle('active', i===n);
+      document.getElementById('pane'+i).style.display = i===n ? 'block' : 'none';
+    });
+    render();
+  }
+
+  function renderCurrentBatch() {
+    const out = document.getElementById('output');
+    const note = document.getElementById('confidenceNote');
+    let table = `<table class="tl"><thead><tr><th>Approval week</th><th>Batch range (LBA)</th><th>Center</th></tr></thead><tbody>`;
+    for (let k = -2; k <= 12; k++) {
+      const b = batchAtWeek(k);
+      const cls = k === 0 ? 'now' : '';
+      const label = k === 0 ? ' (now)' : (k < 0 ? ' (past)' : '');
+      table += `<tr class="${cls}"><td>${fmtShort(b.week)}${label}</td><td>${fmtShort(b.p25)} – ${fmtShort(b.p75)}</td><td>${fmtShort(b.p50)}</td></tr>`;
+    }
+    table += `</tbody></table>`;
+    const today = batchAtWeek(0);
+    out.innerHTML = `
+      <div class="headline">${fmt(LATEST_P50)}</div>
+      <div class="headline-sub">Center of the submission-date batch USCIS is approving now · <span class="pill">${D.N_WEEKS} weeks of MyCasesHub data</span></div>
+      <div class="result-row"><span class="label">Approval week</span><span class="val">${fmt(LATEST_AW)}</span></div>
+      <div class="result-row"><span class="label">Typical batch range</span><span class="val">${fmt(today.p25)} – ${fmt(today.p75)}</span></div>
+      <div class="result-row"><span class="label">Frontier velocity (full)</span><span class="val">~${D.FRONTIER_SLOPE.toFixed(2)} LBA-days/wk</span></div>
+      <div class="result-row"><span class="label">Frontier velocity (recent 5 wk)</span><span class="val">~${D.FRONTIER_SLOPE_RECENT.toFixed(2)} LBA-days/wk</span></div>
+      ${table}
+    `;
+    note.innerHTML = `Per MyCasesHub data, USCIS approves cases each week whose submission date (LBA) falls in roughly a ${D.BATCH_WIDTH_DAYS}-day window. The center has been advancing about ${D.FRONTIER_SLOPE.toFixed(2)} LBA-days per calendar week (R² = ${D.FRONTIER_R2}). Recent 5-week pace is ${D.FRONTIER_SLOPE_RECENT.toFixed(2)} d/wk — slower, meaning the queue is growing. Forecast above uses the full ${D.N_WEEKS}-week slope and a fixed 9-day batch width (the median observed across all weeks). Forecasts more than 8 weeks out carry meaningful uncertainty.`;
+  }
+
+  function renderWhenApproved() {
+    const out = document.getElementById('output');
+    const note = document.getElementById('confidenceNote');
+    const sd = new Date(document.getElementById('submitDate').value + 'T00:00:00');
+    if (isNaN(sd)) { out.innerHTML = '<div class="warn">Pick a valid date.</div>'; note.innerHTML = ''; return; }
+
+    const daysAhead = dayDiff(LATEST_P50, sd);
+    if (daysAhead < 0) {
+      out.innerHTML = `
+        <div class="headline">Already past the frontier</div>
+        <div class="headline-sub">Your LBA is older than the current approval batch</div>
+        <div class="result-row"><span class="label">Your submission date</span><span class="val">${fmt(sd)}</span></div>
+        <div class="result-row"><span class="label">Current batch center</span><span class="val">${fmt(LATEST_P50)}</span></div>
+        <div class="result-row"><span class="label">Status</span><span class="val">Should already be approved</span></div>
+      `;
+      note.innerHTML = `Per MyCasesHub data, your LBA is ${-daysAhead} days older than what USCIS is approving now. Cases like yours should already be approved. If yours hasn't been, it may be in a different processing track, have an RFE, or otherwise be off the standard queue.`;
+      return;
+    }
+
+    const centerWk = weeksToReach(sd);
+    const earlyWk = centerWk - HALF_WIDTH / D.FRONTIER_SLOPE;
+    const lateWk = centerWk + HALF_WIDTH / D.FRONTIER_SLOPE;
+    const center = rollWk(addDays(LATEST_AW, 7 * centerWk));
+    const earliest = rollWk(addDays(LATEST_AW, 7 * earlyWk));
+    const latest = rollWk(addDays(LATEST_AW, 7 * lateWk));
+    const totalWaitDays = dayDiff(sd, center);
+
+    const matchWeek = Math.round(centerWk);
+    let table = `<table class="tl"><thead><tr><th>Approval week</th><th>Batch range</th><th>Center</th></tr></thead><tbody>`;
+    const start = Math.max(-2, matchWeek - 4);
+    const end = matchWeek + 4;
+    for (let k = start; k <= end; k++) {
+      const b = batchAtWeek(k);
+      const cls = k === matchWeek ? 'match' : (k === 0 ? 'now' : '');
+      const label = k === matchWeek ? ' ← your batch' : (k === 0 ? ' (now)' : '');
+      table += `<tr class="${cls}"><td>${fmtShort(b.week)}${label}</td><td>${fmtShort(b.p25)} – ${fmtShort(b.p75)}</td><td>${fmtShort(b.p50)}</td></tr>`;
+    }
+    table += `</tbody></table>`;
+
+    out.innerHTML = `
+      <div class="headline">${fmt(center)}</div>
+      <div class="headline-sub">Estimated approval week · <span class="pill">trend forecast</span></div>
+      <div class="result-row"><span class="label">Likely window</span><span class="val">${fmt(earliest)} – ${fmt(latest)}</span></div>
+      <div class="result-row"><span class="label">Your submission date</span><span class="val">${fmt(sd)}</span></div>
+      <div class="result-row"><span class="label">LBA-days ahead of frontier</span><span class="val">${daysAhead} days</span></div>
+      <div class="result-row"><span class="label">Calendar weeks until your batch</span><span class="val">~${centerWk.toFixed(1)} weeks</span></div>
+      <div class="result-row"><span class="label">Total wait from submission</span><span class="val">~${totalWaitDays} days</span></div>
+      ${table}
+    `;
+    note.innerHTML = `Per MyCasesHub data, USCIS is approving cases with LBA around ${fmt(LATEST_P50)}. Your LBA is ${daysAhead} days more recent. At the current pace of ${D.FRONTIER_SLOPE.toFixed(2)} LBA-days/week, the frontier reaches you in about ${centerWk.toFixed(1)} calendar weeks. The likely window is when the early edge (p75) of the batch first reaches your date, to when the late edge (p25) sweeps past. Forecasts past ~8 weeks are uncertain — the slope can drift; check the recent-5-week slope on the Current batch tab to see whether the trend is holding.`;
+  }
+
+  function renderWhenSubmit() {
+    const out = document.getElementById('output');
+    const note = document.getElementById('confidenceNote');
+    const exp = new Date(document.getElementById('expDate').value + 'T00:00:00');
+    const buf = parseInt(document.getElementById('bufferDays').value || '30', 10);
+    if (isNaN(exp)) { out.innerHTML = '<div class="warn">Pick a valid date.</div>'; note.innerHTML = ''; return; }
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    const targetApprovalDate = addDays(exp, -buf);
+    const calWeeksAvail = (targetApprovalDate - LATEST_AW) / 86400000 / 7;
+    if (calWeeksAvail < 0) {
+      out.innerHTML = `
+        <div class="headline">Already too late</div>
+        <div class="headline-sub">Card expires before next approval cycle would complete</div>
+        <div class="result-row"><span class="label">Card expires</span><span class="val">${fmt(exp)}</span></div>
+        <div class="result-row"><span class="label">Buffer requested</span><span class="val">${buf} days</span></div>
+        <div class="warn">Your safety-buffer deadline (${fmt(targetApprovalDate)}) is before the most recent approval week we have data for.</div>
+      `;
+      note.innerHTML = '';
+      return;
+    }
+    const targetBatch = batchAtWeek(calWeeksAvail);
+    const latestSubmit = targetBatch.p25;
+    const safeSubmit = targetBatch.p50;
+    const earlySubmit = targetBatch.p75;
+    const daysUntilSafe = dayDiff(today, safeSubmit);
+
+    let status;
+    if (daysUntilSafe < 0) {
+      status = `<div class="warn">Past the safe submit date by ${-daysUntilSafe} days. You can still submit by ${fmt(latestSubmit)}, but the margin is tight.</div>`;
+    } else if (daysUntilSafe < 14) {
+      status = `<div class="warn">Tight — only ${daysUntilSafe} days to the safe submit date.</div>`;
+    } else {
+      status = `<div class="ok">${daysUntilSafe} days until the safe submit date.</div>`;
+    }
+
+    out.innerHTML = `
+      <div class="headline">${fmt(safeSubmit)}</div>
+      <div class="headline-sub">Safe submit-by date · for approval before ${fmt(exp)} (with ${buf}-day buffer)</div>
+      <div class="result-row"><span class="label">Card expires</span><span class="val">${fmt(exp)}</span></div>
+      <div class="result-row"><span class="label">Target approval date</span><span class="val">${fmt(targetApprovalDate)}</span></div>
+      <div class="result-row"><span class="label">Submit by (earliest, p75)</span><span class="val">${fmt(earlySubmit)}</span></div>
+      <div class="result-row"><span class="label">Submit by (safe, p50)</span><span class="val">${fmt(safeSubmit)}</span></div>
+      <div class="result-row"><span class="label">Submit by (latest, p25)</span><span class="val">${fmt(latestSubmit)}</span></div>
+      ${status}
+    `;
+    note.innerHTML = `Per MyCasesHub data: to get approved by ${fmt(targetApprovalDate)}, your LBA should fall inside the batch USCIS is approving in the week of ${fmt(targetBatch.week)}. That batch is projected to span ${fmt(earlySubmit)} – ${fmt(latestSubmit)}. The "safe" date is the center of that batch — best probability of landing inside the window. Submitting later than the latest date risks missing the window entirely. Assumes the trend continues at ${D.FRONTIER_SLOPE.toFixed(2)} LBA-days/week.`;
+  }
+
+  function render() {
+    const m1 = document.getElementById('m1').classList.contains('active');
+    const m2 = document.getElementById('m2').classList.contains('active');
+    if (m1) renderCurrentBatch();
+    else if (m2) renderWhenApproved();
+    else renderWhenSubmit();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().slice(0,10);
+    const future = new Date(); future.setMonth(future.getMonth() + 12);
+    document.getElementById('submitDate').value = today;
+    document.getElementById('expDate').value = future.toISOString().slice(0,10);
+    document.getElementById('m1').onclick = () => setMode(1);
+    document.getElementById('m2').onclick = () => setMode(2);
+    document.getElementById('m3').onclick = () => setMode(3);
+    document.getElementById('submitDate').oninput = render;
+    document.getElementById('expDate').oninput = render;
+    document.getElementById('bufferDays').oninput = render;
+    document.getElementById('dataStamp').textContent =
+      `Data through ${fmt(LATEST_AW)} · ${D.N_WEEKS} weeks · ${D.N_CASES.toLocaleString()} cases · sourced from MyCasesHub`;
+    render();
+  });
+</script>
+</body>
+</html>
