@@ -104,19 +104,17 @@
 
 <script>
   // =====================================================================
-  // UPDATE EACH WEEK after running analyze.py.
-  // The script writes frontier_constants.json with everything below.
-  // Single-slope, fixed-width model.
+  // Updated weekly. Single-slope, fixed-width frontier model.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:   '2026-04-20', // Monday of the most recent approval week
-    LATEST_BATCH_P50:       '2025-11-20', // median LBA approved that week
-    FRONTIER_SLOPE:         2.52,         // LBA-days per calendar week (full sample)
-    FRONTIER_SLOPE_RECENT:  1.90,         // last-5-weeks slope (drift indicator)
+    LATEST_APPROVAL_WEEK:   '2026-05-04', // Monday of the most recent approval week
+    LATEST_BATCH_P50:       '2025-11-29', // median LBA approved that week
+    FRONTIER_SLOPE:         2.56,         // LBA-days per calendar week (full sample)
+    FRONTIER_SLOPE_RECENT:  2.60,         // last-5-weeks slope (drift indicator)
     BATCH_WIDTH_DAYS:       9,            // median p75-p25 width across all weeks
-    FRONTIER_R2:            0.885,        // R² of frontier fit
-    N_WEEKS:                10,
-    N_CASES:                6295,
+    FRONTIER_R2:            0.919,        // R² of frontier fit
+    N_WEEKS:                12,
+    N_CASES:                6793,
   };
   // =====================================================================
 
@@ -174,7 +172,7 @@
       <div class="result-row"><span class="label">Frontier velocity (recent 5 wk)</span><span class="val">~${D.FRONTIER_SLOPE_RECENT.toFixed(2)} LBA-days/wk</span></div>
       ${table}
     `;
-    note.innerHTML = `Per MyCasesHub data, USCIS approves cases each week whose submission date (LBA) falls in roughly a ${D.BATCH_WIDTH_DAYS}-day window. The center has been advancing about ${D.FRONTIER_SLOPE.toFixed(2)} LBA-days per calendar week (R² = ${D.FRONTIER_R2}). Recent 5-week pace is ${D.FRONTIER_SLOPE_RECENT.toFixed(2)} d/wk — slower, meaning the queue is growing. Forecast above uses the full ${D.N_WEEKS}-week slope and a fixed 9-day batch width (the median observed across all weeks). Forecasts more than 8 weeks out carry meaningful uncertainty.`;
+    note.innerHTML = `Per MyCasesHub data, USCIS approves cases each week whose submission date (LBA) falls in roughly a ${D.BATCH_WIDTH_DAYS}-day window. The center has been advancing about ${D.FRONTIER_SLOPE.toFixed(2)} LBA-days per calendar week (R² = ${D.FRONTIER_R2}). Recent 5-week pace is ${D.FRONTIER_SLOPE_RECENT.toFixed(2)} d/wk — basically in line with the long-run trend. Forecast above uses the full ${D.N_WEEKS}-week slope and a fixed 9-day batch width (the median observed across all weeks). Forecasts more than 8 weeks out carry meaningful uncertainty.`;
   }
 
   function renderWhenApproved() {
