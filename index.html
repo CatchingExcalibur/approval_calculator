@@ -104,17 +104,19 @@
 
 <script>
   // =====================================================================
-  // Updated weekly. Single-slope, fixed-width frontier model.
+  // Updated weekly. Main-cluster frontier model (introduced May 18, 2026).
+  // The anchor tracks the CENTER of the main approval cluster (where the
+  // bulk of cases are concentrated), not the overall median.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:   '2026-05-04', // Monday of the most recent approval week
-    LATEST_BATCH_P50:       '2025-11-29', // median LBA approved that week
-    FRONTIER_SLOPE:         2.56,         // LBA-days per calendar week (full sample)
-    FRONTIER_SLOPE_RECENT:  2.60,         // last-5-weeks slope (drift indicator)
-    BATCH_WIDTH_DAYS:       9,            // median p75-p25 width across all weeks
-    FRONTIER_R2:            0.919,        // R² of frontier fit
-    N_WEEKS:                12,
-    N_CASES:                6793,
+    LATEST_APPROVAL_WEEK:   '2026-05-18', // Monday of the most recent approval week
+    LATEST_BATCH_P50:       '2025-11-13', // main-cluster median LBA approved that week
+    FRONTIER_SLOPE:         6.0,          // LBA-days per calendar week (very rough — based on limited bimodal data)
+    FRONTIER_SLOPE_RECENT:  6.0,          // matches main slope (single bimodal observation)
+    BATCH_WIDTH_DAYS:       9,            // typical batch width
+    FRONTIER_R2:            null,         // not enough bimodal-week data points for a stable fit
+    N_WEEKS:                14,
+    N_CASES:                7512,
   };
   // =====================================================================
 
@@ -165,14 +167,13 @@
     const today = batchAtWeek(0);
     out.innerHTML = `
       <div class="headline">${fmt(LATEST_P50)}</div>
-      <div class="headline-sub">Center of the submission-date batch USCIS is approving now · <span class="pill">${D.N_WEEKS} weeks of MyCasesHub data</span></div>
+      <div class="headline-sub">Center of the main submission-date cluster USCIS is approving now · <span class="pill">${D.N_WEEKS} weeks of MyCasesHub data</span></div>
       <div class="result-row"><span class="label">Approval week</span><span class="val">${fmt(LATEST_AW)}</span></div>
       <div class="result-row"><span class="label">Typical batch range</span><span class="val">${fmt(today.p25)} – ${fmt(today.p75)}</span></div>
-      <div class="result-row"><span class="label">Frontier velocity (full)</span><span class="val">~${D.FRONTIER_SLOPE.toFixed(2)} LBA-days/wk</span></div>
-      <div class="result-row"><span class="label">Frontier velocity (recent 5 wk)</span><span class="val">~${D.FRONTIER_SLOPE_RECENT.toFixed(2)} LBA-days/wk</span></div>
+      <div class="result-row"><span class="label">Frontier velocity (main cluster)</span><span class="val">~${D.FRONTIER_SLOPE.toFixed(1)} LBA-days/wk</span></div>
       ${table}
     `;
-    note.innerHTML = `Per MyCasesHub data, USCIS approves cases each week whose submission date (LBA) falls in roughly a ${D.BATCH_WIDTH_DAYS}-day window. The center has been advancing about ${D.FRONTIER_SLOPE.toFixed(2)} LBA-days per calendar week (R² = ${D.FRONTIER_R2}). Recent 5-week pace is ${D.FRONTIER_SLOPE_RECENT.toFixed(2)} d/wk — basically in line with the long-run trend. Forecast above uses the full ${D.N_WEEKS}-week slope and a fixed 9-day batch width (the median observed across all weeks). Forecasts more than 8 weeks out carry meaningful uncertainty.`;
+    note.innerHTML = `Per MyCasesHub data, USCIS has recently shifted to approving a bimodal pattern of cases: a main cluster (where most approvals happen) plus a smaller secondary cluster of newer cases. The model tracks the main cluster's center, which has been advancing at about ${D.FRONTIER_SLOPE.toFixed(1)} LBA-days per calendar week recently. Forecasts more than 8 weeks out carry meaningful uncertainty, and the methodology was updated on May 18, 2026 to handle the bimodal pattern.`;
   }
 
   function renderWhenApproved() {
@@ -185,12 +186,12 @@
     if (daysAhead < 0) {
       out.innerHTML = `
         <div class="headline">Already past the frontier</div>
-        <div class="headline-sub">Your LBA is older than the current approval batch</div>
+        <div class="headline-sub">Your LBA is older than the current approval cluster</div>
         <div class="result-row"><span class="label">Your submission date</span><span class="val">${fmt(sd)}</span></div>
-        <div class="result-row"><span class="label">Current batch center</span><span class="val">${fmt(LATEST_P50)}</span></div>
-        <div class="result-row"><span class="label">Status</span><span class="val">Should already be approved</span></div>
+        <div class="result-row"><span class="label">Current cluster center</span><span class="val">${fmt(LATEST_P50)}</span></div>
+        <div class="result-row"><span class="label">Status</span><span class="val">Should be approved soon, may be in the straggler cluster</span></div>
       `;
-      note.innerHTML = `Per MyCasesHub data, your LBA is ${-daysAhead} days older than what USCIS is approving now. Cases like yours should already be approved. If yours hasn't been, it may be in a different processing track, have an RFE, or otherwise be off the standard queue.`;
+      note.innerHTML = `Per MyCasesHub data, your LBA is ${-daysAhead} days older than the main cluster USCIS is currently working on. Cases like yours are likely being approved as part of USCIS's straggler clearing, though not in a predictable batch. If yours hasn't been approved yet, it may have a status hold (RFE, biometrics, etc.) or be in a different processing track.`;
       return;
     }
 
@@ -224,7 +225,7 @@
       <div class="result-row"><span class="label">Total wait from submission</span><span class="val">~${totalWaitDays} days</span></div>
       ${table}
     `;
-    note.innerHTML = `Per MyCasesHub data, USCIS is approving cases with LBA around ${fmt(LATEST_P50)}. Your LBA is ${daysAhead} days more recent. At the current pace of ${D.FRONTIER_SLOPE.toFixed(2)} LBA-days/week, the frontier reaches you in about ${centerWk.toFixed(1)} calendar weeks. The likely window is when the early edge (p75) of the batch first reaches your date, to when the late edge (p25) sweeps past. Forecasts past ~8 weeks are uncertain — the slope can drift; check the recent-5-week slope on the Current batch tab to see whether the trend is holding.`;
+    note.innerHTML = `Per MyCasesHub data, USCIS is currently working a main cluster centered around ${fmt(LATEST_P50)}. Your LBA is ${daysAhead} days more recent. At the recent pace of ${D.FRONTIER_SLOPE.toFixed(1)} LBA-days per calendar week, the cluster reaches you in about ${centerWk.toFixed(1)} calendar weeks. The likely window is when the early edge of the cluster first reaches your date, to when the late edge sweeps past. Forecasts past ~8 weeks are uncertain.`;
   }
 
   function renderWhenSubmit() {
@@ -273,7 +274,7 @@
       <div class="result-row"><span class="label">Submit by (latest, p25)</span><span class="val">${fmt(latestSubmit)}</span></div>
       ${status}
     `;
-    note.innerHTML = `Per MyCasesHub data: to get approved by ${fmt(targetApprovalDate)}, your LBA should fall inside the batch USCIS is approving in the week of ${fmt(targetBatch.week)}. That batch is projected to span ${fmt(earlySubmit)} – ${fmt(latestSubmit)}. The "safe" date is the center of that batch — best probability of landing inside the window. Submitting later than the latest date risks missing the window entirely. Assumes the trend continues at ${D.FRONTIER_SLOPE.toFixed(2)} LBA-days/week.`;
+    note.innerHTML = `Per MyCasesHub data: to get approved by ${fmt(targetApprovalDate)}, your LBA should fall inside the cluster USCIS is approving in the week of ${fmt(targetBatch.week)}. That cluster is projected to span ${fmt(earlySubmit)} – ${fmt(latestSubmit)}. The "safe" date is the center of that cluster, the best probability of landing inside the window. Submitting later than the latest date risks missing the window entirely. Assumes the recent pace continues at ${D.FRONTIER_SLOPE.toFixed(1)} LBA-days per week.`;
   }
 
   function render() {
@@ -296,7 +297,7 @@
     document.getElementById('expDate').oninput = render;
     document.getElementById('bufferDays').oninput = render;
     document.getElementById('dataStamp').textContent =
-      `Data through ${fmt(LATEST_AW)} · ${D.N_WEEKS} weeks · ${D.N_CASES.toLocaleString()} cases · sourced from MyCasesHub`;
+      `Data through ${fmt(LATEST_AW)} · ${D.N_WEEKS} weeks · ${D.N_CASES.toLocaleString()} cases · main-cluster frontier model`;
     render();
   });
 </script>
