@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>About & Updates · I-821D Approval Calculator</title>
+<style>
+  :root{
+    --bg:#fafaf7; --surface:#ffffff; --text:#1a1a18; --muted:#6b6b66;
+    --border:#e6e3da; --accent:#185fa5; --accent-bg:#e6f1fb;
+    --radius:12px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg);color:var(--text);margin:0;padding:24px;line-height:1.6}
+  .wrap{max-width:680px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  h2{font-size:18px;font-weight:600;margin:28px 0 10px}
+  .subtitle{color:var(--muted);font-size:14px;margin-bottom:24px}
+  a{color:var(--accent)}
+  .back{display:inline-block;margin-bottom:20px;font-size:14px;font-weight:600;color:var(--accent);text-decoration:none}
+  .back:hover{text-decoration:underline}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:16px}
+  p{margin:0 0 14px}
+  .updates-list{list-style:none;padding:0;margin:0}
+  .updates-list li{padding:14px 0;border-bottom:1px solid var(--border)}
+  .updates-list li:last-child{border-bottom:0}
+  .updates-list a{font-weight:600;text-decoration:none}
+  .updates-list a:hover{text-decoration:underline}
+  .update-num{display:inline-block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px}
+  .reddit-box{background:var(--accent-bg);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:14px 16px;margin:16px 0;font-size:14px}
+  .reddit-box a{font-weight:600}
+  .disclaimer{font-size:13px;color:var(--muted);margin-top:20px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);line-height:1.6}
+  .disclaimer strong{color:var(--accent);font-weight:600}
+  .footer{font-size:12px;color:var(--muted);text-align:center;margin-top:24px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<a href="index.html" class="back">← Back to the calculator</a>
+
+<h1>About this calculator</h1>
+<div class="subtitle">The story behind the I-821D approval estimator, and where to follow updates.</div>
+
+<div class="card">
+  <p>Hello! My name is <strong>CatchingExcalibur</strong>, and I'm the one developing and supporting this approval estimator. I built it because the official USCIS processing-time estimates aren't detailed enough to actually plan around, and a lot of us are just trying to get some sense of when our renewal might come through.</p>
+
+  <p>I'm a real person doing this in my spare time, not a company or a service. It's free, it's open, and I update it as new data comes in.</p>
+</div>
+
+<h2>What the calculator does and how it works</h2>
+<div class="card">
+  <p>The calculator estimates when an I-821D (DACA renewal) case might be approved, based on recent approval data sourced from <strong>MyCasesHub</strong>.</p>
+
+  <p>The basic idea is simple. Each week, I look at which submission dates (DOS, or Date of Submission) USCIS is actually approving. By tracking how that moves forward over time, the calculator can estimate roughly how long it will take USCIS to reach your submission date.</p>
+
+  <p>Think of it like a deli counter. USCIS is calling submission dates in roughly the order they came in. The calculator figures out where the counter is now, how fast it's moving, and how far ahead of it your date sits. From there it estimates which week your case is likely to land in.</p>
+
+  <p>The methodology has changed over time as USCIS has changed how they process cases. The full story of those changes, including why the math evolved, is in the weekly updates below.</p>
+</div>
+
+<h2>Follow the updates</h2>
+<div class="card">
+  <p>I post a detailed update most weeks on the r/DACA subreddit on Reddit. That's where I share the newest data, explain any changes to the calculator, and answer questions. If you want to follow along or ask me something directly, that's the best place to do it.</p>
+
+  <div class="reddit-box">
+    Follow the project on Reddit at <a href="https://www.reddit.com/r/DACA/" target="_blank" rel="noopener">r/DACA</a>, where I post all my updates.
+  </div>
+
+  <p>Here are all the updates I've posted so far, newest at the bottom:</p>
+
+  <ul class="updates-list">
+    <li>
+      <div class="update-num">Update 1</div>
+      <a href="https://www.reddit.com/r/DACA/comments/1t3ta8v/i_built_an_approval_calculator_using_mycaseshub/" target="_blank" rel="noopener">I built an approval calculator using MyCasesHub data, try it out</a>
+    </li>
+    <li>
+      <div class="update-num">Update 2</div>
+      <a href="https://www.reddit.com/r/DACA/comments/1tag9p1/update_2_calculator_improved_2_more_weeks_of/" target="_blank" rel="noopener">Calculator improved + 2 more weeks of MyCasesHub data</a>
+    </li>
+    <li>
+      <div class="update-num">Update 3</div>
+      <a href="https://www.reddit.com/r/DACA/comments/1thu2f8/update_3_weird_week_no_calculator_update_sorry/" target="_blank" rel="noopener">Weird week, no calculator update, sorry for the delay</a>
+    </li>
+    <li>
+      <div class="update-num">Update 4</div>
+      <a href="https://www.reddit.com/r/DACA/comments/1toslea/update_4_new_methodology_rough_estimate_uscis/" target="_blank" rel="noopener">New methodology, rough estimate, USCIS changing how they do approvals</a>
+    </li>
+    <li>
+      <div class="update-num">Update 5</div>
+      <a href="https://www.reddit.com/r/DACA/comments/1tucf63/update_5_the_new_math_is_steady_but_working/" target="_blank" rel="noopener">The new math is steady but working, calculator updated</a>
+    </li>
+    <li>
+      <div class="update-num">Update 6</div>
+      <a href="https://www.reddit.com/r/DACA/comments/1u0sn86/update_6_something_big_and_weird_happened_this/" target="_blank" rel="noopener">Something big and weird happened this week, please read</a>
+    </li>
+  </ul>
+</div>
+
+<div class="disclaimer">
+  <strong>Thank you for using the calculator.</strong> Please remember that it is only based on the average case. Everyone's situation is different, and this should not be treated as a 100% guaranteed solution. It's meant as a guide to help you see roughly where your case might land, not a promise about your specific timeline. For advice about your own case, talk to a licensed immigration attorney.
+</div>
+
+<a href="index.html" class="back" style="margin-top:20px">← Back to the calculator</a>
+
+<div class="footer">Built and maintained by CatchingExcalibur · Data sourced from MyCasesHub</div>
+
+</div>
+</body>
+</html>

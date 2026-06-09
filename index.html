@@ -18,8 +18,10 @@
   .wrap{max-width:680px;margin:0 auto}
   h1{font-size:24px;font-weight:600;margin:0 0 4px}
   .subtitle{color:var(--muted);font-size:14px;margin-bottom:6px}
-  .source-badge{font-size:12px;color:var(--muted);margin-bottom:24px}
+  .source-badge{font-size:12px;color:var(--muted);margin-bottom:16px}
   .source-badge strong{color:var(--accent);font-weight:600}
+  .welcome{background:var(--accent-bg);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:24px;font-size:13px;color:var(--text);line-height:1.5}
+  .welcome a{color:var(--accent);font-weight:600;text-decoration:underline}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
   .mode-row{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
   .mode-btn{flex:1;min-width:140px;padding:12px 8px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;color:var(--muted);font-family:inherit;transition:all 0.15s;line-height:1.3}
@@ -57,6 +59,10 @@
 <h1>USCIS approval frontier estimator</h1>
 <div class="subtitle">Tracks which submission-date batch USCIS is currently approving and projects the queue forward.</div>
 <div class="source-badge">Data sourced from <strong>MyCasesHub</strong> · planning tool, not a guarantee.</div>
+
+<div class="welcome">
+  Welcome! If you have questions or want to understand how I came up with the data and why the calculator works the way it does, <a href="updates.html">click here to read the updates and background</a>.
+</div>
 
 <div class="card">
   <div class="mode-row">
@@ -259,7 +265,7 @@
     if (daysUntilSafe < 0) {
       status = `<div class="warn">Past the safe submit date by ${-daysUntilSafe} days. You can still submit by ${fmt(latestSubmit)}, but the margin is tight.</div>`;
     } else if (daysUntilSafe < 14) {
-      status = `<div class="warn">Tight — only ${daysUntilSafe} days to the safe submit date.</div>`;
+      status = `<div class="warn">Tight, only ${daysUntilSafe} days to the safe submit date.</div>`;
     } else {
       status = `<div class="ok">${daysUntilSafe} days until the safe submit date.</div>`;
     }
