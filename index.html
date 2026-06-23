@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>I-821D approval estimator</title>
+<title>DACA approval estimator</title>
 <style>
   :root{
     --bg:#fafaf7; --surface:#ffffff; --text:#1a1a18; --muted:#6b6b66;
@@ -49,8 +49,8 @@
 <body>
 <div class="wrap">
 
-<h1>I-821D approval estimator</h1>
-<div class="subtitle">Estimates when a DACA renewal might be approved, based on recent approval data.</div>
+<h1>DACA approval estimator</h1>
+<div class="subtitle">Enter the date you submitted your DACA renewal, and this gives you a rough idea of when it might be approved.</div>
 <div class="source-badge">Data sourced from <strong>MyCasesHub</strong> · planning tool, not a guarantee.</div>
 
 <div class="welcome">
@@ -58,14 +58,13 @@
 </div>
 
 <div class="newbanner">
-  <strong>New two-track model (June 2026).</strong> USCIS recently changed how they approve cases. Instead of slowly working through a backlog, they are now approving most recent submissions within a few weeks, while a smaller group of older cases is still in extended background-check review. This calculator was rebuilt to reflect that. This pattern is only a couple of weeks old, so treat the estimates as a rough guide while it settles.
+  Heads up: USCIS has been approving cases very fast lately, in big waves. Recent applications are often approved within about a month, and the older backlog is now being cleared quickly too. This is a new pattern and it is only a few weeks old, so treat the estimate as a rough guide, not a promise.
 </div>
 
 <div class="card">
   <div class="field">
-    <label for="submitDate">Your Date of Submission (DOS)</label>
+    <label for="submitDate">The date you submitted your application</label>
     <input type="date" id="submitDate">
-    <div class="note" style="margin-top:0">The date your case last had a status update before approval, which for most people is when they submitted their renewal.</div>
   </div>
 
   <div id="output" class="card" style="margin-top:16px;margin-bottom:0"></div>
@@ -74,47 +73,51 @@
 <div class="note" id="explainNote"></div>
 
 <div class="disclaimer">
-  This calculator is only an estimate based on recent approval data sourced from <strong>MyCasesHub</strong>.
-  It is not official USCIS guidance and cannot guarantee an approval date. It reflects the average recent case;
-  your individual case can differ for many reasons, including RFEs, biometrics, background-check status, country of
-  origin, and case type. Use this as a planning tool only, not a 100% guaranteed answer.
+  This is only an estimate based on recent approval data sourced from <strong>MyCasesHub</strong>.
+  It is not official USCIS guidance and cannot guarantee an approval date. It is based on the average recent case,
+  and your case can be different for many reasons, including RFEs, biometrics, background check status, country of
+  origin, and case type. Please use this as a guide to help you plan, not as a 100% guaranteed answer.
 </div>
 
 <div class="data-stamp" id="dataStamp"></div>
-<div class="links"><a href="updates.html">Read the updates &amp; background &rarr;</a></div>
+<div class="links"><a href="updates.html">Read the updates and background &rarr;</a></div>
 
 </div>
 
 <script>
   // =====================================================================
-  // TWO-TRACK MODEL (introduced June 2026).
-  // USCIS shifted from a slow-moving backlog queue to approving most recent
-  // submissions within a few weeks, while older cases remain in extended
-  // background-check review.
+  // TWO-TRACK MODEL (introduced June 2026, updated weekly).
   //
-  // Update these weekly from the latest MyCasesHub snapshot.
+  // Background: starting in late April 2026, USCIS shifted away from working
+  // one slow line. Recent applications (submitted after ~April 27, 2026) now
+  // get approved within roughly a month. Older applications were stuck in
+  // extended background-check review, but as of mid-June 2026 that backlog is
+  // now being cleared quickly too, in large weekly waves.
+  //
+  // Update these from the latest MyCasesHub snapshot each week.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:  '2026-06-08', // Monday of the most recent approval week
+    LATEST_APPROVAL_WEEK:  '2026-06-15', // Monday of the most recent approval week
 
-    // The cutoff: cases submitted on/after this date are mostly on the fast track.
+    // Cases submitted on/after this date are mostly on the fast track.
     // Tied to the April 27, 2026 enhanced-vetting biometrics date.
     FAST_TRACK_CUTOFF:     '2026-04-27',
 
     // Fast track: recent submissions, approved a roughly flat number of days
-    // after submitting (not a moving queue). Range from observed p25-p75.
-    FAST_WAIT_LOW:         25,  // days (p25)
-    FAST_WAIT_MID:         38,  // days (median)
-    FAST_WAIT_HIGH:        52,  // days (p75)
+    // after submitting.
+    FAST_WAIT_LOW:         25,
+    FAST_WAIT_MID:         35,
+    FAST_WAIT_HIGH:        55,
 
-    // Slow track: older cases still in extended review.
-    SLOW_WAIT_LOW:         185, // days
-    SLOW_WAIT_MID:         196, // days
-    SLOW_WAIT_HIGH:        205, // days
-    SLOW_MEDIAN_DOS:       '2025-11-24', // current center of the slow-track backlog
+    // Slow track (older backlog). Still a longer wait, but now clearing fast
+    // and the wait is starting to compress. Range kept wide on purpose.
+    SLOW_WAIT_LOW:         150,
+    SLOW_WAIT_MID:         185,
+    SLOW_WAIT_HIGH:        205,
+    SLOW_BACKLOG_CENTER:   '2025-12-12', // current center of the backlog being cleared
 
-    N_WEEKS:               17,
-    N_CASES:               10451,
+    N_WEEKS:               18,
+    N_CASES:               10725,
   };
   // =====================================================================
 
@@ -130,11 +133,11 @@
     const out = document.getElementById('output');
     const note = document.getElementById('explainNote');
     const sd = new Date(document.getElementById('submitDate').value + 'T00:00:00');
-    if (isNaN(sd)) { out.innerHTML = '<div class="note">Pick your submission date above to see an estimate.</div>'; note.innerHTML=''; return; }
+    if (isNaN(sd)) { out.innerHTML = '<div class="note">Pick the date you submitted your application above to see an estimate.</div>'; note.innerHTML=''; return; }
 
     const today = todayMid();
     const daysVsCutoff = dayDiff(CUTOFF, sd); // positive = after cutoff (fast track)
-    const EDGE = 14; // soft edge zone around the cutoff
+    const EDGE = 14;
 
     if (daysVsCutoff >= EDGE) {
       // ---- FAST TRACK ----
@@ -145,22 +148,22 @@
 
       let timing;
       if (dayDiff(today, high) < 0) {
-        timing = `Based on the pattern, a case submitted on your date would typically already be approved by now. If yours hasn't been, it may be in background-check review or have a case-specific hold.`;
+        timing = `An application submitted on your date would usually already be approved by now. If yours is not, it may still be in a background check or have something specific holding it up.`;
       } else if (midDaysOut <= 0) {
-        timing = `You're right in the typical approval window now.`;
+        timing = `You are right around the typical approval window now.`;
       } else {
-        timing = `That's roughly ${midDaysOut} days from today.`;
+        timing = `That is about ${midDaysOut} days from today.`;
       }
 
       out.innerHTML = `
-        <div class="track-tag track-fast">Fast track (recent submission)</div>
+        <div class="track-tag track-fast">Recent application</div>
         <div class="headline">${fmt(low)} to ${fmt(high)}</div>
         <div class="headline-sub">Estimated approval window</div>
-        <div class="result-row"><span class="label">Your submission date</span><span class="val">${fmt(sd)}</span></div>
+        <div class="result-row"><span class="label">You submitted</span><span class="val">${fmt(sd)}</span></div>
         <div class="result-row"><span class="label">Most likely approval</span><span class="val">around ${fmt(mid)}</span></div>
         <div class="result-row"><span class="label">Typical wait for recent cases</span><span class="val">${D.FAST_WAIT_LOW} to ${D.FAST_WAIT_HIGH} days</span></div>
       `;
-      note.innerHTML = `Your submission date is after the late-April 2026 cutoff, so you're likely on the current fast track. Right now USCIS is approving most recent submissions roughly ${D.FAST_WAIT_LOW} to ${D.FAST_WAIT_HIGH} days after they're filed, assuming the background check clears. ${timing} Important: this fast pattern is only a couple of weeks old, so it's a rough guide, not a promise. If your case involves an RFE, biometrics issue, or extra review, it can take longer.`;
+      note.innerHTML = `You submitted after late April 2026, so you are likely in the group getting approved fast. Right now USCIS is approving most recent applications about ${D.FAST_WAIT_LOW} to ${D.FAST_WAIT_HIGH} days after they are filed, as long as the background check is clear. ${timing} Keep in mind this fast pattern is only a few weeks old, so it is a rough guide and not a promise. If your case has an RFE, a biometrics issue, or extra review, it can take longer.`;
 
     } else if (daysVsCutoff <= -EDGE) {
       // ---- SLOW TRACK ----
@@ -171,25 +174,25 @@
 
       let timing;
       if (dayDiff(today, high) < 0) {
-        timing = `Cases like yours are at the older end of the backlog and most should be getting approved around now or soon. If yours is still pending, it may still be in extended background-check review.`;
+        timing = `Cases like yours are in the older group, and USCIS has been clearing this backlog quickly. Most should be getting approved around now or soon.`;
       } else if (midDaysOut <= 0) {
-        timing = `You're around the typical approval window for the older backlog now.`;
+        timing = `You are around the typical approval window for the older group now.`;
       } else {
-        timing = `That would be roughly ${midDaysOut} days from today, though backlog timing is less predictable.`;
+        timing = `That would be about ${midDaysOut} days from today, but the backlog is moving fast right now so it could be sooner.`;
       }
 
       out.innerHTML = `
-        <div class="track-tag track-slow">Extended review (older submission)</div>
+        <div class="track-tag track-slow">Older application (backlog, now clearing fast)</div>
         <div class="headline">${fmt(low)} to ${fmt(high)}</div>
-        <div class="headline-sub">Estimated approval window (less certain)</div>
-        <div class="result-row"><span class="label">Your submission date</span><span class="val">${fmt(sd)}</span></div>
+        <div class="headline-sub">Estimated approval window</div>
+        <div class="result-row"><span class="label">You submitted</span><span class="val">${fmt(sd)}</span></div>
         <div class="result-row"><span class="label">Most likely approval</span><span class="val">around ${fmt(mid)}</span></div>
         <div class="result-row"><span class="label">Typical wait for older cases</span><span class="val">${D.SLOW_WAIT_LOW} to ${D.SLOW_WAIT_HIGH} days</span></div>
       `;
-      note.innerHTML = `Your submission date is before the late-April 2026 cutoff, so your case may be in the group still going through extended background-check review. These older cases are currently being approved around ${D.SLOW_WAIT_LOW} to ${D.SLOW_WAIT_HIGH} days after submission, noticeably slower than recent filers. ${timing} This backlog is shrinking week to week, but the exact timing for any single case is uncertain. Cases from certain countries may face longer holds.`;
+      note.innerHTML = `You submitted before late April 2026, so your case is in the older group that went through extended background-check review. The good news is USCIS is now clearing this backlog very fast, in big weekly waves, instead of crawling through it. These older cases are currently being approved around ${D.SLOW_WAIT_LOW} to ${D.SLOW_WAIT_HIGH} days after submission, and that wait has been shrinking. ${timing} Timing for any single case is still hard to predict, and cases from certain countries may take longer.`;
 
     } else {
-      // ---- EDGE ZONE (near the cutoff) ----
+      // ---- EDGE ZONE ----
       const fLow = addDays(sd, D.FAST_WAIT_LOW);
       const fHigh = addDays(sd, D.FAST_WAIT_HIGH);
       const sLow = addDays(sd, D.SLOW_WAIT_LOW);
@@ -198,12 +201,12 @@
       out.innerHTML = `
         <div class="track-tag track-edge">Right around the cutoff</div>
         <div class="headline">It depends on your background check</div>
-        <div class="headline-sub">Your submission date is close to the late-April 2026 dividing line</div>
-        <div class="result-row"><span class="label">Your submission date</span><span class="val">${fmt(sd)}</span></div>
-        <div class="result-row"><span class="label">If on the fast track</span><span class="val">${fmt(fLow)} to ${fmt(fHigh)}</span></div>
-        <div class="result-row"><span class="label">If in extended review</span><span class="val">${fmt(sLow)} to ${fmt(sHigh)}</span></div>
+        <div class="headline-sub">You submitted close to the late-April 2026 dividing line</div>
+        <div class="result-row"><span class="label">You submitted</span><span class="val">${fmt(sd)}</span></div>
+        <div class="result-row"><span class="label">If in the fast group</span><span class="val">${fmt(fLow)} to ${fmt(fHigh)}</span></div>
+        <div class="result-row"><span class="label">If in the older group</span><span class="val">${fmt(sLow)} to ${fmt(sHigh)}</span></div>
       `;
-      note.innerHTML = `Your submission date is right around the late-April 2026 cutoff, which is the dividing line between the fast track and the older extended-review group. Cases near this line can fall on either side depending on when your background check was run and whether it needs extra review. If you're on the fast track, expect roughly ${D.FAST_WAIT_LOW} to ${D.FAST_WAIT_HIGH} days from submission. If your case needs extended review, it could be closer to ${D.SLOW_WAIT_LOW}+ days. There's no way to know for certain from the public data which side you're on.`;
+      note.innerHTML = `You submitted right around late April 2026, which is the line between the fast group and the older group. Cases near this line can fall on either side depending on when your background check was run. If you are in the fast group, expect about ${D.FAST_WAIT_LOW} to ${D.FAST_WAIT_HIGH} days from submission. If your case needed extra review, it could be closer to ${D.SLOW_WAIT_LOW}+ days, though the backlog is clearing fast right now. There is no way to know for sure from the public data which side you are on.`;
     }
   }
 
