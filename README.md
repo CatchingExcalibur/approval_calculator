@@ -1,170 +1,130 @@
-# I-821D Approval Calculator
+# DACA Approval Estimator
 
-A simple, anonymous calculator that estimates when an I-821D (DACA renewal) case might be approved, based on recent approval-date trends from [MyCasesHub](https://mycaseshub.com).
+A simple, anonymous tool that estimates when a DACA renewal (Form I-821D) might be approved, based on recent approval data sourced from [MyCasesHub](https://mycaseshub.com).
 
-**Live calculator:** https://catchingexcalibur.github.io/approval_calculator/
+**Live tool:** https://catchingexcalibur.github.io/approval_calculator/
 
-> **Scope:** This tool only covers **I-821D (DACA renewal)** cases. It does not estimate timelines for I-90, I-485, N-400, or any other form type.
+> **Scope:** This tool only covers I-821D (DACA renewal) cases. It does not estimate timelines for I-90, I-485, N-400, or any other form type.
 
 ---
 
 ## What it does
 
-The calculator has three modes:
+You enter the date you submitted your DACA renewal, and the tool gives you a rough estimate of when it might be approved, based on how USCIS has been approving similar cases recently.
 
-1. **Current batch**: shows which range of submission dates USCIS is currently approving, and projects which dates come next over the following weeks.
-2. **When will I be approved?**: given your Date of Submission, estimates which approval week your case is likely to fall in.
-3. **When should I submit?**: given a card expiration date, suggests the latest submission date that should still result in approval before your card expires.
+That's it. One date in, an estimated approval window out. No accounts, no personal information, no tracking.
 
 ---
 
-## A note on terms: DOS
+## How USCIS processing changed, and why this tool works the way it does
 
-Throughout the calculator, **DOS** means **Date of Submission**. Technically this is the date your case last had a status update before approval (the data field is called `last_before_approval_date`), which for most people is the date they submitted their renewal. Earlier versions of this project called this "LBA"; it has been renamed to DOS for clarity.
+This tool has been rebuilt several times because USCIS kept changing how they process cases. Here is the short history, because it explains the current design.
 
----
+**February through April 2026: one slow line.** For about ten weeks, USCIS worked through cases like a single-file line, approving them roughly in the order they were submitted and advancing about 2.5 days worth of submission dates per calendar week. The early versions of this tool modeled that as a slowly moving "frontier."
 
-## How it works
+**Late April 2026: a split into two tracks.** On April 27, 2026, USCIS started a new, stronger background-check process. Cases whose biometrics were taken before that date had to be re-screened, which slowed them down. Cases submitted after that date were screened under the new system from the start, so they moved through quickly. This split the data into two separate groups, and the single-line model stopped working.
 
-USCIS doesn't approve I-821D cases in random order. Each week, they approve cases whose Date of Submission (DOS) falls inside one or more clusters of dates. The calculator tracks two things:
+**June 2026: high-volume clearing of both tracks.** USCIS dramatically increased their approval volume to roughly 3,000+ cases per week, about four times the earlier pace. Some weeks they focus that capacity on recent applications, other weeks on the older backlog. Recent applications now get approved within roughly a month. The older backlog, which had been nearly stuck, is now being cleared quickly in large weekly waves.
 
-- **Where the main cluster currently is**: for the most recent week of data, the center of the largest group of submission dates being approved.
-- **How fast that cluster moves forward**: how many days of submission dates USCIS gets through per calendar week.
-
-For example: if USCIS is currently approving cases with a DOS around Nov 20, 2025, and the main cluster has been advancing about 6.5 days of submission dates per calendar week, then someone with a DOS of Jan 5, 2026 is 46 days "down the line," meaning roughly 7 calendar weeks before USCIS reaches their case.
-
-That's the core model. Anchor on the current main cluster, project forward at the observed pace.
-
-### Why "current wait time" math doesn't work
-
-A common mistake is to take the latest reported wait time (e.g. "187 days") and add it to your submission date. That only works for people whose submission date is already at the front of the queue. If you submitted more recently, your wait will be longer, because the queue keeps growing.
-
-The calculator avoids this by using queue position instead of average wait time.
+The current tool reflects this with a **two-track model**.
 
 ---
 
-## The methodology evolved (main-cluster model)
+## The two-track model
 
-The calculator originally used a simpler model: USCIS was assumed to work a single, narrow batch of submission dates each week, advancing it forward at a steady rate. This held for roughly 10 weeks (February through April 2026), with the frontier advancing about 2.5 DOS-days per calendar week.
+When you enter your submission date, the tool sorts you into one of two groups based on a cutoff around April 27, 2026.
 
-In May 2026, USCIS shifted to a **multi-cluster approval pattern**: instead of one batch, they began approving a large main cluster of cases alongside one or two smaller groups of newer cases in the same week. This broke the single-batch model, because the overall median submission date bounced around depending on the week's mix and sometimes appeared to move backwards, which is not physically meaningful.
+**Fast track (submitted on or after about April 27, 2026).** Recent applications are being approved a roughly flat number of days after submission, currently about 25 to 55 days, assuming the background check is clear. The estimate is simply your submission date plus that window.
 
-The current model handles this by **anchoring on the center of the main cluster** (the largest concentration of approvals in a given week) rather than the overall median. The smaller secondary clusters are treated separately. This is more honest about where the bulk of approvals are actually happening.
+**Older group / backlog (submitted before late April 2026).** These cases went through the extended background-check process. They are a longer wait, currently around 150 to 205 days from submission, but this backlog is now being cleared quickly, so the wait has been compressing week to week.
 
-Across the three most recent weeks, the main cluster advanced at a consistent pace:
+**Edge zone (within about two weeks of the cutoff).** Cases submitted right around late April can fall on either side depending on when their background check was run, so the tool shows both possibilities.
 
-| Approval week | Main cluster center (DOS) | Advance |
-|---|---|---|
-| May 11, 2026 | around Nov 7, 2025 | (baseline) |
-| May 18, 2026 | around Nov 13, 2025 | +6 days |
-| May 25, 2026 | around Nov 20, 2025 | +7 days |
-
-That works out to about 6.5 DOS-days per calendar week, which is the slope the calculator currently uses.
+The cutoff date and the wait ranges are derived from the most recent weekly MyCasesHub data and are updated as new data comes in.
 
 ---
 
-## The model in detail
+## A note on the April 27 cutoff
 
-The model uses three numbers, all derived from the data:
-
-| Constant | Meaning | Current value |
-|---|---|---|
-| `LATEST_BATCH_P50` | Main-cluster median DOS in the most recent week | 2025-11-20 |
-| `FRONTIER_SLOPE` | DOS-days advanced per calendar week | +6.5 d/wk |
-| `BATCH_WIDTH_DAYS` | Typical width of the approval cluster | 9 days |
-
-For any submission date `S`, the model computes:
-
-```
-calendar_weeks_until_approval = (S − LATEST_BATCH_P50) / FRONTIER_SLOPE
-estimated_approval_week       = LATEST_APPROVAL_WEEK + (calendar_weeks_until_approval × 7 days)
-```
-
-The "likely window" treats the cluster as a fixed 9-day-wide interval that slides forward at the frontier slope. The earliest possible approval is when the front edge of the cluster reaches the user's date; the latest is when the back edge sweeps past.
-
-Approval dates that fall on a Saturday or Sunday roll forward to Monday, since USCIS approvals only happen on weekdays.
+The April 27, 2026 dividing line matches the date USCIS rolled out its enhanced vetting process. The interpretation that this cutoff is what splits cases into the fast and slow groups is the developer's best reading of the data and public policy news. It fits the observed pattern well, but USCIS has not officially confirmed that this specific date drives the split. Treat it as a well-supported guess, not a confirmed fact.
 
 ---
 
 ## Data source
 
-All approval data is sourced from **[MyCasesHub](https://mycaseshub.com)** via weekly snapshots of I-821D approvals. The trend constants are computed from clean cases only:
+All approval data is sourced from [MyCasesHub](https://mycaseshub.com) via weekly snapshots of I-821D approvals. The model constants are computed from clean cases only:
 
 - `success = True`
 - `match_type = processing_to_approved`
-- All three of `last_before_approval_date`, `approved_date`, and `days_last_to_approval` populated
+- All of `last_before_approval_date`, `approved_date`, and `days_last_to_approval` populated
 
-Cases are deduplicated by case number across snapshots. Weeks with fewer than 20 clean cases are excluded from the trend fit.
+Cases are deduplicated by case number across snapshots. The tool is built on roughly 18 weeks of data covering more than 10,000 I-821D approvals (February through June 2026).
 
-The current model is built on **15 weeks of data covering roughly 7,800 I-821D approvals** (Feb 9 through May 25, 2026).
+In the data and earlier versions of this tool, the submission date is referred to as DOS (Date of Submission). Technically this is the date a case last had a status update before approval, which for most people is when they submitted their renewal.
 
 ---
 
 ## Privacy
 
-**No data is collected, logged, or transmitted.** The calculator runs entirely in your browser:
+No data is collected, logged, or transmitted. The tool runs entirely in your browser:
 
 - No database, no analytics, no tracking
 - No receipt numbers, A-numbers, names, or any personal information requested
-- The only input required is a date
-- All math happens locally in JavaScript on your device
+- The only input is a date
+- All calculations happen locally in JavaScript on your device
 
-If you want to verify this, the entire calculator is in `index.html` in this repo. Read it yourself.
+If you want to verify this, the entire tool is in `index.html` in this repo. Read it yourself.
 
 ---
 
 ## Files
 
-This repo currently contains a single file:
-
 | File | Purpose |
 |---|---|
-| `index.html` | The calculator, a self-contained HTML/CSS/JavaScript file |
+| `index.html` | The estimator, a self-contained HTML/CSS/JavaScript file |
+| `updates.html` | An about/background page with an intro and links to the weekly Reddit updates |
 
-The model constants are hardcoded into the `D` block near the top of `index.html`. To update the calculator with new data, edit those constants and commit.
+The model constants are hardcoded in the `D` block near the top of `index.html`. To update the tool with new weekly data, edit those constants and commit.
+
+---
+
+## Follow the updates
+
+Weekly updates are posted on the r/DACA subreddit, where new data is shared, changes to the tool are explained, and questions are answered. The full list of updates is linked from the `updates.html` page, and the latest update is always the best place to see the current state of the data.
+
+Subreddit: https://www.reddit.com/r/DACA/
 
 ---
 
 ## Limitations
 
-This calculator is a planning tool, not a guarantee. It will not predict your approval date precisely, and the underlying assumptions can break in any of these ways:
+This is a planning tool, not a guarantee. It will not predict your approval date precisely, and the underlying assumptions can break:
 
-- **USCIS changes pace or pattern**: they could speed up, slow down, change which clusters they work, or stop entirely. The shift to a multi-cluster pattern in May 2026 is a real example of this happening.
-- **Holidays and shutdowns**: federal closures pause processing.
-- **Case-specific factors**: RFEs, biometrics issues, or different processing tracks pull individual cases off the standard queue.
-- **Sample size**: the main-cluster slope is based on a handful of recent weeks; estimates more than about 8 weeks into the future are particularly uncertain.
-- **I-821D only**: the model is fit on DACA-renewal data and should not be used for other form types.
+- USCIS changes pace or approach, which has already happened several times in 2026
+- Holidays and shutdowns pause processing
+- Case-specific factors like RFEs, biometrics issues, or country of origin can pull individual cases off the typical pattern
+- The current two-track pattern is only a few weeks old, so the numbers may shift as more data comes in
 
-The model only knows what the recent past has looked like and assumes the near future will look similar. **Use this as one input among many when planning, not as a definitive answer.**
-
----
-
-## Roadmap
-
-The calculator is updated weekly as new MyCasesHub snapshots come in. Things being watched and considered as the dataset grows:
-
-- Whether the multi-cluster pattern continues, and whether the secondary (newer-case) clusters grow large enough that the definition of the "main" cluster needs to change.
-- Refining the frontier slope as more weeks of multi-cluster data accumulate.
-- Confidence bands derived from observed week-over-week variance.
+The model only knows what the recent past has looked like and assumes the near future will look similar. Use this as one input when planning, not as a definitive answer. For advice about your own case, talk to a licensed immigration attorney.
 
 ---
 
 ## Disclaimer
 
-This calculator is not affiliated with USCIS, MyCasesHub, or any government agency. It is an independent project that uses publicly accessible approval data to produce statistical estimates. Estimates are based on observed trends and have no official standing. Approval timing depends on many factors outside the model's view.
+This tool is not affiliated with USCIS, MyCasesHub, or any government agency. It is an independent project that uses publicly accessible approval data to produce statistical estimates. Estimates are based on observed trends and have no official standing.
 
-**Do not make legally consequential decisions based solely on this calculator.** Consult an immigration attorney for case-specific guidance.
+Do not make legally consequential decisions based solely on this tool. Consult an immigration attorney for case-specific guidance.
 
 ---
 
 ## Contributing
 
-If you spot a bug or see the math doing something obviously wrong, open an issue. Suggestions welcome.
+If you spot a bug or see the math doing something obviously wrong, open an issue. Suggestions are welcome.
 
 ---
 
 ## Thanks
 
-Thanks to everyone who's been following along on r/DACA and supported the project. This exists because official processing-time estimates aren't granular enough to plan around. Hopefully this fills a small piece of that gap.
+Thanks to everyone who has followed along on r/DACA, shared feedback, and asked hard questions. This exists because official processing-time estimates are not detailed enough to plan around. Hopefully it helps fill a small piece of that gap.
 
 - [@CatchingExcalibur](https://github.com/CatchingExcalibur)
