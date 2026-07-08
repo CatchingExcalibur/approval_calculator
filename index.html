@@ -84,39 +84,43 @@
 
 <script>
   // =====================================================================
-  // SINGLE ACCELERATING MODEL (introduced late June 2026).
+  // SINGLE CATCH-UP MODEL with a DYNAMIC ANCHOR (updated early July 2026).
   //
-  // Background: through spring 2026 USCIS split into a fast group (recent
-  // applications) and a slow backlog. By late June, USCIS ramped approvals
-  // to a very high volume and the backlog collapsed. The two groups merged
-  // into one smooth pattern: the more recently you applied, the shorter your
-  // wait, in a nearly straight line.
+  // What the data shows: USCIS is approving cases in huge weekly waves and
+  // has essentially caught up. In each recent week, applications from every
+  // month (December through June) were approved around the SAME few days.
+  // The fitted line of wait vs application date has slope ~1.0 (R^2 ~ 1.0),
+  // which means one simple thing: your approval lands around "now",
+  // unless you applied so recently that the minimum processing time
+  // (about 3 to 4 weeks) has not passed yet.
   //
-  // The data shows wait time drops by about 1 day for every 1 day later you
-  // applied, which means almost everyone is currently being approved around
-  // the same point in time. We model that directly.
+  // So the estimate is: approval ~ whichever is LATER of
+  //   (a) around today (the catch-up anchor), or
+  //   (b) your submission date + MIN_WAIT.
   //
-  // Update REF_DATE, REF_WAIT and SLOPE from the latest weekly snapshot.
+  // The anchor tracks the real calendar (today + ANCHOR_LAG), so the
+  // calculator stays current between weekly data updates instead of
+  // drifting stale. Weekly updates just re-verify MIN_WAIT, the slope,
+  // and the stamp below.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:  '2026-06-22',
+    LATEST_APPROVAL_WEEK:  '2026-06-29',
 
-    // Reference point: an application submitted on REF_DATE currently waits
-    // about REF_WAIT days. (From the latest week's fitted line.)
-    REF_DATE:              '2026-01-01',
-    REF_WAIT:              171,   // days
+    // Minimum processing time for brand-new applications (observed floor:
+    // recent applicants' median wait is ~25 days).
+    MIN_WAIT:              25,    // days
 
-    // For each day LATER you applied than REF_DATE, wait drops by SLOPE days.
-    // ~1.0 means everyone is being approved around the same time right now.
-    SLOPE:                 1.0,
+    // The catch-up anchor: cases that cleared MIN_WAIT are being approved
+    // around now. ANCHOR_LAG adds a few days of headroom so we do not
+    // overpromise "today".
+    ANCHOR_LAG:            4,     // days after today
 
-    // Floor: even the newest applications take at least this long.
-    MIN_WAIT:              20,    // days
-    // Uncertainty band shown around the estimate.
-    BAND:                  25,    // +/- days
+    // Uncertainty band around the estimate.
+    BAND_LOW:              10,    // days before the midpoint
+    BAND_HIGH:             21,    // days after the midpoint
 
-    N_WEEKS:               19,
-    N_CASES:               18400,
+    N_WEEKS:               20,
+    N_CASES:               23600,
   };
   // =====================================================================
 
@@ -125,16 +129,7 @@
   const dayDiff = (a,b) => Math.round((b-a)/86400000);
   const todayMid = () => { const t=new Date(); t.setHours(0,0,0,0); return t; };
 
-  const REF = new Date(D.REF_DATE + 'T00:00:00');
   const LATEST_AW = new Date(D.LATEST_APPROVAL_WEEK + 'T00:00:00');
-
-  function estimatedWait(sd) {
-    // wait = REF_WAIT - SLOPE * (days sd is after REF_DATE)
-    const offset = dayDiff(REF, sd);
-    let wait = D.REF_WAIT - D.SLOPE * offset;
-    if (wait < D.MIN_WAIT) wait = D.MIN_WAIT;
-    return Math.round(wait);
-  }
 
   function render() {
     const out = document.getElementById('output');
@@ -143,22 +138,33 @@
     if (isNaN(sd)) { out.innerHTML = '<div class="note">Pick the date you submitted your application above to see an estimate.</div>'; note.innerHTML=''; return; }
 
     const today = todayMid();
-    const wait = estimatedWait(sd);
-    const mid = addDays(sd, wait);
-    const low = addDays(sd, Math.max(D.MIN_WAIT, wait - D.BAND));
-    const high = addDays(sd, wait + D.BAND);
-    const midDaysOut = dayDiff(today, mid);
 
-    let tag, timing;
-    if (dayDiff(today, high) < 0) {
-      tag = '<div class="tag soon">Likely already approved or very soon</div>';
-      timing = `Based on the current pace, an application submitted on your date would usually be approved right around now. If yours is not approved yet, it may still be in a background check or have something specific holding it up. Given how fast USCIS is moving, it could come any day.`;
+    // Anchor: approvals are landing around now (with a little headroom).
+    // Floor: brand-new applications still need MIN_WAIT days.
+    const anchor = addDays(today, D.ANCHOR_LAG);
+    const floorDate = addDays(sd, D.MIN_WAIT);
+    const mid = (floorDate > anchor) ? floorDate : anchor;
+
+    let low = addDays(mid, -D.BAND_LOW);
+    if (low < today) low = today; // do not show past dates
+    const high = addDays(mid, D.BAND_HIGH);
+    const midDaysOut = dayDiff(today, mid);
+    const waitDays = dayDiff(sd, mid);
+
+    let tag, timing, mode;
+    if (mid.getTime() === anchor.getTime()) {
+      // Caught-up case: they applied long enough ago that they are in the wave now.
+      tag = '<div class="tag soon">You are in the catch-up wave</div>';
+      timing = `Your application has been in the system long enough that, at the current pace, cases like yours are being approved right around now. It could realistically come any day, and most land within about three weeks.`;
+      mode = 'caught';
     } else if (midDaysOut <= 14) {
       tag = '<div class="tag soon">Coming up soon</div>';
-      timing = `That is very soon, roughly ${Math.max(0,midDaysOut)} days from today. USCIS is approving cases fast right now, so hang tight.`;
+      timing = `That is very soon, roughly ${midDaysOut} days from today.`;
+      mode = 'floor';
     } else {
       tag = '<div class="tag">Estimated approval</div>';
-      timing = `That is about ${midDaysOut} days from today. The good news is USCIS keeps speeding up, so this could end up being sooner.`;
+      timing = `That is about ${midDaysOut} days from today.`;
+      mode = 'floor';
     }
 
     out.innerHTML = `
@@ -167,9 +173,14 @@
       <div class="headline-sub">Estimated approval window</div>
       <div class="result-row"><span class="label">You submitted</span><span class="val">${fmt(sd)}</span></div>
       <div class="result-row"><span class="label">Most likely approval</span><span class="val">around ${fmt(mid)}</span></div>
-      <div class="result-row"><span class="label">Estimated total wait</span><span class="val">about ${wait} days</span></div>
+      <div class="result-row"><span class="label">Estimated total wait</span><span class="val">about ${waitDays} days</span></div>
     `;
-    note.innerHTML = `Here is how the estimate works. Right now USCIS is approving cases in huge waves and has nearly caught up on the backlog. In the latest data, applications are being approved based mostly on how recently they were filed: the more recent your application, the shorter your wait. Someone who applied on your date is currently seeing a wait of about ${wait} days. ${timing} Remember this is an average across thousands of cases, not a promise about yours. Your own case can move faster or slower depending on your background check, RFEs, country of origin, and other factors.`;
+
+    const howItWorks = `Here is how the estimate works right now. USCIS is approving cases in huge weekly waves and has essentially caught up on its backlog. In the latest data, applications from every month, old and new alike, are being approved around the same time. So there are only two questions that matter: has your application been in the system for the minimum processing time (about ${D.MIN_WAIT} days), and if so, you are in the wave and your approval should land around now.`;
+    const floorNote = (mode === 'floor')
+      ? ` Since you applied recently, your estimate is simply your submission date plus that minimum processing time. ${timing}`
+      : ` ${timing}`;
+    note.innerHTML = howItWorks + floorNote + ` This assumes USCIS keeps up its current pace, which can change. And remember this is an average across thousands of cases, not a promise about yours. Your own case can move faster or slower depending on your background check, RFEs, country of origin, and other factors.`;
   }
 
   document.addEventListener('DOMContentLoaded', () => {
