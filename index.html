@@ -128,6 +128,9 @@
   const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
   const dayDiff = (a,b) => Math.round((b-a)/86400000);
   const todayMid = () => { const t=new Date(); t.setHours(0,0,0,0); return t; };
+  // USCIS does not approve cases on weekends, so roll any Saturday or Sunday
+  // estimate forward to the following Monday.
+  const toWeekday = d => { const x=new Date(d); const g=x.getDay(); if(g===6){x.setDate(x.getDate()+2);} else if(g===0){x.setDate(x.getDate()+1);} return x; };
 
   const LATEST_AW = new Date(D.LATEST_APPROVAL_WEEK + 'T00:00:00');
 
@@ -143,16 +146,19 @@
     // Floor: brand-new applications still need MIN_WAIT days.
     const anchor = addDays(today, D.ANCHOR_LAG);
     const floorDate = addDays(sd, D.MIN_WAIT);
-    const mid = (floorDate > anchor) ? floorDate : anchor;
+    const rawMid = (floorDate > anchor) ? floorDate : anchor;
 
+    // USCIS only approves on weekdays, so roll weekend estimates to Monday.
+    const mid = toWeekday(rawMid);
     let low = addDays(mid, -D.BAND_LOW);
     if (low < today) low = today; // do not show past dates
-    const high = addDays(mid, D.BAND_HIGH);
+    low = toWeekday(low);
+    const high = toWeekday(addDays(mid, D.BAND_HIGH));
     const midDaysOut = dayDiff(today, mid);
     const waitDays = dayDiff(sd, mid);
 
     let tag, timing, mode;
-    if (mid.getTime() === anchor.getTime()) {
+    if (rawMid.getTime() === anchor.getTime()) {
       // Caught-up case: they applied long enough ago that they are in the wave now.
       tag = '<div class="tag soon">You are in the catch-up wave</div>';
       timing = `Your application has been in the system long enough that, at the current pace, cases like yours are being approved right around now. It could realistically come any day, and most land within about three weeks.`;
