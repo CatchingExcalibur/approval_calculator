@@ -4,6 +4,8 @@ A simple, anonymous tool that estimates when a DACA renewal (Form I-821D) might 
 
 **Live tool:** https://catchingexcalibur.github.io/approval_calculator/
 
+**Background and weekly updates:** [updates.html](updates.html)
+
 > **Scope:** This tool only covers I-821D (DACA renewal) cases. It does not estimate timelines for I-90, I-485, N-400, or any other form type.
 
 ---
@@ -12,7 +14,7 @@ A simple, anonymous tool that estimates when a DACA renewal (Form I-821D) might 
 
 You enter the date you submitted your DACA renewal, and the tool gives you a rough estimate of when it might be approved, based on how USCIS has been approving similar cases recently.
 
-That's it. One date in, an estimated approval window out. No accounts, no personal information, no tracking.
+That is it. One date in, an estimated approval window out. No accounts, no personal information, no tracking.
 
 ---
 
@@ -20,33 +22,56 @@ That's it. One date in, an estimated approval window out. No accounts, no person
 
 This tool has been rebuilt several times because USCIS kept changing how they process cases. Here is the short history, because it explains the current design.
 
-**February through April 2026: one slow line.** For about ten weeks, USCIS worked through cases like a single-file line, approving them roughly in the order they were submitted and advancing about 2.5 days worth of submission dates per calendar week. The early versions of this tool modeled that as a slowly moving "frontier."
+**February through April 2026: one slow line.** For about ten weeks, USCIS worked through cases like a single-file line, approving them roughly in the order they were submitted and advancing about 2.5 days of submission dates per calendar week.
 
-**Late April 2026: a split into two tracks.** On April 27, 2026, USCIS started a new, stronger background-check process. Cases whose biometrics were taken before that date had to be re-screened, which slowed them down. Cases submitted after that date were screened under the new system from the start, so they moved through quickly. This split the data into two separate groups, and the single-line model stopped working.
+**Late April 2026: a split into two tracks.** On April 27, 2026, USCIS started a new, stronger background-check process. Cases whose biometrics were taken before that date had to be re-screened, which slowed them down, while cases submitted after that date were screened under the new system from the start and moved quickly. This split the data into two separate groups.
 
-**June 2026: high-volume clearing of both tracks.** USCIS dramatically increased their approval volume to roughly 3,000+ cases per week, about four times the earlier pace. Some weeks they focus that capacity on recent applications, other weeks on the older backlog. Recent applications now get approved within roughly a month. The older backlog, which had been nearly stuck, is now being cleared quickly in large weekly waves.
+**June 2026: a massive catch-up.** USCIS increased approvals to several thousand per week, peaking at over 8,800 in a single week. The backlog collapsed. The two tracks merged into one smooth pattern.
 
-The current tool reflects this with a **two-track model**.
+**July 2026: a steady state.** With most of the backlog cleared, weekly volume settled to around 3,000. Each week is now the last of the older cases finishing their extended review, plus new applications approved in about three weeks.
+
+The current tool reflects this final stage with a **single catch-up model**.
 
 ---
 
-## The two-track model
+## The single catch-up model
 
-When you enter your submission date, the tool sorts you into one of two groups based on a cutoff around April 27, 2026.
+Since USCIS has essentially caught up, the estimate comes down to two simple questions.
 
-**Fast track (submitted on or after about April 27, 2026).** Recent applications are being approved a roughly flat number of days after submission, currently about 25 to 55 days, assuming the background check is clear. The estimate is simply your submission date plus that window.
+First, has the application been in the system longer than the minimum processing time, which is currently about 25 days? If yes, the application is in the current wave, and cases like it are being approved around now. If the application is more recent than that, the estimate is the submission date plus that minimum time.
 
-**Older group / backlog (submitted before late April 2026).** These cases went through the extended background-check process. They are a longer wait, currently around 150 to 205 days from submission, but this backlog is now being cleared quickly, so the wait has been compressing week to week.
+The data behind this is unusually clean. When you plot wait time against submission date, it forms a nearly perfect straight line with a slope of about 1.0. In plain terms, almost everyone getting approved in a given week is landing on the same few days, regardless of when they applied. The only thing that changes a person's wait is how long ago they submitted.
 
-**Edge zone (within about two weeks of the cutoff).** Cases submitted right around late April can fall on either side depending on when their background check was run, so the tool shows both possibilities.
+### The dynamic anchor
 
-The cutoff date and the wait ranges are derived from the most recent weekly MyCasesHub data and are updated as new data comes in.
+Rather than freezing an approval date at the time of each weekly update, the tool computes the estimate from the current day every time it runs. The anchor (the point that caught-up cases are measured against) is simply today, plus a few days of headroom. This keeps the estimate accurate between weekly data refreshes instead of drifting stale.
+
+One side effect worth knowing: for an application already past the minimum wait, the estimated date moves forward day by day as the calendar advances. This is not the wait growing. It is the tool continuing to say "around now" and following the calendar until the approval actually lands.
+
+### Weekends
+
+USCIS does not approve cases on weekends, so any estimated date that falls on a Saturday or Sunday is rolled forward to the following Monday.
+
+---
+
+## The model constants
+
+All constants live in the `D` block near the top of `index.html` and are refreshed from the latest weekly MyCasesHub snapshot.
+
+| Constant | Meaning | Current value |
+|---|---|---|
+| `LATEST_APPROVAL_WEEK` | Monday of the most recent approval week | 2026-07-13 |
+| `MIN_WAIT` | Minimum processing time for new applications | 25 days |
+| `ANCHOR_LAG` | Days of headroom added to today for the anchor | 4 days |
+| `BAND_LOW` / `BAND_HIGH` | Window shown before and after the midpoint | 10 / 21 days |
+
+To update the tool with new data, edit those constants and commit.
 
 ---
 
 ## A note on the April 27 cutoff
 
-The April 27, 2026 dividing line matches the date USCIS rolled out its enhanced vetting process. The interpretation that this cutoff is what splits cases into the fast and slow groups is the developer's best reading of the data and public policy news. It fits the observed pattern well, but USCIS has not officially confirmed that this specific date drives the split. Treat it as a well-supported guess, not a confirmed fact.
+The two-track split that appeared in spring 2026 lined up with the April 27, 2026 date that USCIS rolled out enhanced vetting. The interpretation that this cutoff drove the split, with earlier applications effectively reviewed twice, is the developer's best reading of the data and public policy news. It fits the observed pattern well, but USCIS has not officially confirmed it. Treat it as a well-supported explanation, not a confirmed fact.
 
 ---
 
@@ -58,9 +83,9 @@ All approval data is sourced from [MyCasesHub](https://mycaseshub.com) via weekl
 - `match_type = processing_to_approved`
 - All of `last_before_approval_date`, `approved_date`, and `days_last_to_approval` populated
 
-Cases are deduplicated by case number across snapshots. The tool is built on roughly 18 weeks of data covering more than 10,000 I-821D approvals (February through June 2026).
+Cases are deduplicated by case number across snapshots. The tool is built on roughly 22 weeks of data covering more than 29,000 I-821D approvals (February through July 2026).
 
-In the data and earlier versions of this tool, the submission date is referred to as DOS (Date of Submission). Technically this is the date a case last had a status update before approval, which for most people is when they submitted their renewal.
+In the data and earlier versions of this tool, the submission date is sometimes referred to as DOS (Date of Submission). Technically this is the date a case last had a status update before approval, which for most people is when they submitted their renewal.
 
 ---
 
@@ -84,13 +109,11 @@ If you want to verify this, the entire tool is in `index.html` in this repo. Rea
 | `index.html` | The estimator, a self-contained HTML/CSS/JavaScript file |
 | `updates.html` | An about/background page with an intro and links to the weekly Reddit updates |
 
-The model constants are hardcoded in the `D` block near the top of `index.html`. To update the tool with new weekly data, edit those constants and commit.
-
 ---
 
 ## Follow the updates
 
-Weekly updates are posted on the r/DACA subreddit, where new data is shared, changes to the tool are explained, and questions are answered. The full list of updates is linked from the `updates.html` page, and the latest update is always the best place to see the current state of the data.
+Weekly updates are posted on the r/DACA subreddit, where new data is shared, changes to the tool are explained, and questions are answered. Every update includes the full, unabridged list of approved submission dates for the most recent weeks, so anyone can check the numbers directly. The complete list of updates is linked from the `updates.html` page.
 
 Subreddit: https://www.reddit.com/r/DACA/
 
@@ -103,7 +126,7 @@ This is a planning tool, not a guarantee. It will not predict your approval date
 - USCIS changes pace or approach, which has already happened several times in 2026
 - Holidays and shutdowns pause processing
 - Case-specific factors like RFEs, biometrics issues, or country of origin can pull individual cases off the typical pattern
-- The current two-track pattern is only a few weeks old, so the numbers may shift as more data comes in
+- Older applications (submitted before late April 2026) can wait longer than the model suggests, since some are still finishing the extended background-check review
 
 The model only knows what the recent past has looked like and assumes the near future will look similar. Use this as one input when planning, not as a definitive answer. For advice about your own case, talk to a licensed immigration attorney.
 
