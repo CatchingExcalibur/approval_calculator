@@ -104,10 +104,13 @@
   // and the stamp below.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:  '2026-08-17',
+    LATEST_APPROVAL_WEEK:  '2026-08-24',
 
-    // Minimum processing time for brand-new applications (observed floor:
-    // recent applicants' median wait is ~25 days).
+    // Minimum processing time for brand-new applications.
+    // Derived from an 8-week pooled sample (Jul 6 to Aug 24, ~4,100 recent
+    // applicants): median 24 days, p25 20, p75 31. Held at 25 as a slightly
+    // conservative round figure. Pooling 8 weeks keeps this stable even if a
+    // single week's data collection is incomplete.
     MIN_WAIT:              25,    // days
 
     // The catch-up anchor: cases that cleared MIN_WAIT are being approved
@@ -119,8 +122,8 @@
     BAND_LOW:              10,    // days before the midpoint
     BAND_HIGH:             21,    // days after the midpoint
 
-    N_WEEKS:               27,
-    N_CASES:               41031,
+    N_WEEKS:               28,
+    N_CASES:               43292,
   };
   // =====================================================================
 
