@@ -104,26 +104,36 @@
   // and the stamp below.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:  '2026-08-31',
+    LATEST_APPROVAL_WEEK:  '2026-09-04',
 
     // Minimum processing time for brand-new applications.
-    // Derived from an 8-week pooled sample (Jul 13 to Aug 31, ~3,600 recent
-    // applicants): median 24 days, p25 20, p75 31. Held at 25 as a slightly
-    // conservative round figure. Pooling 8 weeks keeps this stable even if a
-    // single week's data collection is incomplete.
-    MIN_WAIT:              25,    // days
+    //
+    // Re-derived from COMPLETE data (insights source, Sep 2 to 8, 383 recent
+    // applicants): p10 19, p25 21, median 26, p75 32, p90 47.
+    //
+    // Previously 25, derived from the search source which was later found to
+    // undercount by roughly 4x. A controlled comparison on Sep 2, the one day
+    // both sources covered, showed the missed cases had nearly identical wait
+    // times to the found ones (median 168 vs 166 overall; 26 vs 26 for recent
+    // applicants). So the old figure was based on a smaller sample, not a
+    // skewed one, and only needed a small correction.
+    MIN_WAIT:              26,    // days
 
-    // The catch-up anchor: cases that cleared MIN_WAIT are being approved
-    // around now. ANCHOR_LAG adds a few days of headroom so we do not
-    // overpromise "today".
+    // The catch-up anchor: cases past MIN_WAIT are approved around now.
+    // ANCHOR_LAG adds headroom so we do not overpromise "today".
     ANCHOR_LAG:            4,     // days after today
 
-    // Uncertainty band around the estimate.
+    // Window around the estimate. Sized from the complete-data spread of
+    // recent applicants: median minus p10 is 7 days, p90 minus median is 21.
+    // Widened slightly on the low side so the window is not misleadingly tight.
     BAND_LOW:              10,    // days before the midpoint
     BAND_HIGH:             21,    // days after the midpoint
 
-    N_WEEKS:               29,
-    N_CASES:               44808,
+    // Model check on complete data: wait = 241 - 0.989 x (days after Jan 1),
+    // R^2 = 1.000. The slope near 1.0 confirms the catch-up anchor approach.
+
+    N_WEEKS:               30,
+    N_CASES:               46657,
   };
   // =====================================================================
 
