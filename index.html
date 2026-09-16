@@ -104,12 +104,14 @@
   // and the stamp below.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:  '2026-09-04',
+    LATEST_APPROVAL_WEEK:  '2026-09-11',
 
     // Minimum processing time for brand-new applications.
     //
-    // Re-derived from COMPLETE data (insights source, Sep 2 to 8, 383 recent
-    // applicants): p10 19, p25 21, median 26, p75 32, p90 47.
+    // Derived from COMPLETE data only (insights source). Now pooled across
+    // two complete weeks, Sep 2 to Sep 11, 692 recent applicants:
+    // p10 19, p25 22, median 26, p75 32, p90 47. Week over week the median
+    // read 26 then 27, so 26 remains the right central figure.
     //
     // Previously 25, derived from the search source which was later found to
     // undercount by roughly 4x. A controlled comparison on Sep 2, the one day
@@ -123,17 +125,38 @@
     // ANCHOR_LAG adds headroom so we do not overpromise "today".
     ANCHOR_LAG:            4,     // days after today
 
-    // Window around the estimate. Sized from the complete-data spread of
-    // recent applicants: median minus p10 is 7 days, p90 minus median is 21.
-    // Widened slightly on the low side so the window is not misleadingly tight.
-    BAND_LOW:              10,    // days before the midpoint
-    BAND_HIGH:             21,    // days after the midpoint
+    // Window around the estimate.
+    //
+    // WIDENED Sep 2026. The previous window (-10/+21) was sized from the
+    // spread of recent applicants only, which understated real uncertainty.
+    // Measuring the actual spread across ~29,500 cases, grouped by
+    // application date and measured against each date's median approval,
+    // gives: p25 -13, p75 +8, p10 -38, p90 +34.
+    //
+    // Coverage of the old window was only 58% of real approvals. The new
+    // -20/+35 window covers about 71%. It looks less precise because the
+    // underlying process genuinely is less precise than the old window
+    // implied.
+    BAND_LOW:              20,    // days before the midpoint
+    BAND_HIGH:             35,    // days after the midpoint
 
-    // Model check on complete data: wait = 241 - 0.989 x (days after Jan 1),
-    // R^2 = 1.000. The slope near 1.0 confirms the catch-up anchor approach.
+    // NOTE ON MODEL VALIDATION: earlier versions cited an R^2 of 1.000 on a
+    // fit of wait time against application date. That figure is an arithmetic
+    // artifact, not validation: within a single approval week the approval
+    // date is nearly constant, so wait time is forced to be linear in
+    // application date with slope -1. The same fit returns R^2 ~ 1.000 on
+    // randomly generated data. It has been removed as a quality measure.
+    //
+    // What is actually checked now: whether the median point estimate lands
+    // near observed approvals, and whether the band covers a realistic share
+    // of cases (currently ~71%).
+    //
+    // KNOWN LIMITATION: this data contains approved cases only. Applications
+    // still pending are invisible to it, so the estimate describes when
+    // approved cases were approved, not the odds that any given case will be.
 
-    N_WEEKS:               30,
-    N_CASES:               46657,
+    N_WEEKS:               31,
+    N_CASES:               48814,
   };
   // =====================================================================
 
@@ -199,7 +222,7 @@
     const floorNote = (mode === 'floor')
       ? ` Since you applied recently, your estimate is simply your submission date plus that minimum processing time. ${timing}`
       : ` ${timing}`;
-    note.innerHTML = howItWorks + floorNote + ` This assumes USCIS keeps up its current pace, which can change. And remember this is an average across thousands of cases, not a promise about yours. Your own case can move faster or slower depending on your background check, RFEs, country of origin, and other factors.`;
+    note.innerHTML = howItWorks + floorNote + ` About the window: it is deliberately wide, covering roughly 7 in 10 cases. Real approvals for the same application date spread out over about two months, so a narrow window would look more precise than the process actually is. This assumes USCIS keeps up its current pace, which can change. And remember this is an average across thousands of cases, not a promise about yours. Your own case can move faster or slower depending on your background check, RFEs, country of origin, and other factors.`;
   }
 
   document.addEventListener('DOMContentLoaded', () => {
