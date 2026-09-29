@@ -36,6 +36,7 @@
   .headline-sub{font-size:13px;color:var(--muted);margin-bottom:16px}
   .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;margin-bottom:10px;background:var(--accent-bg);color:var(--accent)}
   .tag.soon{background:var(--success-bg);color:var(--success)}
+  .tag.wait{background:var(--warn-bg);color:var(--warn)}
   .note{font-size:12px;color:var(--muted);margin-top:16px;line-height:1.6}
   .disclaimer{font-size:12px;color:var(--muted);margin-top:24px;padding:14px;background:var(--bg);border-radius:var(--radius-sm);line-height:1.6;border:1px solid var(--border)}
   .disclaimer strong{color:var(--accent);font-weight:600}
@@ -56,7 +57,7 @@
 </div>
 
 <div class="newbanner">
-  Good news: USCIS has been approving cases in huge numbers lately and catching up fast. The old backlog is shrinking quickly, and waits are getting shorter for almost everyone. This is a new and fast-changing pattern, so treat the estimate as a rough guide, not a promise.
+  USCIS is currently running two tracks at once: new applications are usually approved in about a month, while older applications are worked through month by month. Your estimate depends on which group your date falls in. Treat it as a rough guide, not a promise.
 </div>
 
 <div class="card">
@@ -84,91 +85,113 @@
 
 <script>
   // =====================================================================
-  // SINGLE CATCH-UP MODEL with a DYNAMIC ANCHOR (updated early July 2026).
+  // TWO-TRACK QUEUE MODEL (rebuilt late September 2026).
   //
-  // What the data shows: USCIS is approving cases in huge weekly waves and
-  // has essentially caught up. In each recent week, applications from every
-  // month (December through June) were approved around the SAME few days.
-  // The fitted line of wait vs application date has slope ~1.0 (R^2 ~ 1.0),
-  // which means one simple thing: your approval lands around "now",
-  // unless you applied so recently that the minimum processing time
-  // (about 3 to 4 weeks) has not passed yet.
+  // Nine weeks of data (Jul 27 to Sep 25) show USCIS running two tracks:
   //
-  // So the estimate is: approval ~ whichever is LATER of
-  //   (a) around today (the catch-up anchor), or
-  //   (b) your submission date + MIN_WAIT.
+  //  1. FAST TRACK. About 1 in 5 approvals each week goes to applications
+  //     filed within the last month or so, approved in the mid to high 20s
+  //     of days. This has held steady all summer.
   //
-  // The anchor tracks the real calendar (today + ANCHOR_LAG), so the
-  // calculator stays current between weekly data updates instead of
-  // drifting stale. Weekly updates just re-verify MIN_WAIT, the slope,
-  // and the stamp below.
+  //  2. OLDER GROUP. Everything else is worked through roughly month by
+  //     month. The center of the older group being approved moved from
+  //     early January (late July) to early April (late September): about
+  //     11.5 application-days per calendar week over nine weeks, but only
+  //     about 5.7 per week over the last month.
+  //
+  // Between them sits a gap: applications about 2 to 3 months old that were
+  // not caught by the fast track and have not yet been reached by the older
+  // group. The previous "everyone past the minimum wait is approved now"
+  // model was too optimistic for this group, so the estimate now places
+  // anyone past FAST_MAX days on the older-group queue.
+  //
+  // KNOWN LIMITATION: this data contains approved cases only. Applications
+  // still pending are invisible to it, so estimates describe when approved
+  // cases were approved, not the odds that any given case will be.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:  '2026-09-11',
+    LATEST_APPROVAL_WEEK:  '2026-09-25',
 
-    // Minimum processing time for brand-new applications.
-    //
-    // Derived from COMPLETE data only (insights source). Now pooled across
-    // two complete weeks, Sep 2 to Sep 11, 692 recent applicants:
-    // p10 19, p25 22, median 26, p75 32, p90 47. Week over week the median
-    // read 26 then 27, so 26 remains the right central figure.
-    //
-    // Previously 25, derived from the search source which was later found to
-    // undercount by roughly 4x. A controlled comparison on Sep 2, the one day
-    // both sources covered, showed the missed cases had nearly identical wait
-    // times to the found ones (median 168 vs 166 overall; 26 vs 26 for recent
-    // applicants). So the old figure was based on a smaller sample, not a
-    // skewed one, and only needed a small correction.
-    MIN_WAIT:              26,    // days
+    // Fast track: median wait for recent applications, four complete weeks
+    // pooled (Sep 2 to Sep 25, 1,459 cases): p25 23, median 27, p75 32.
+    MIN_WAIT:              27,    // days
+    // Past this many days without approval, the fast track has most likely
+    // been missed (fast-track waits thin out after about 60 days).
+    FAST_MAX:              60,    // days
 
-    // The catch-up anchor: cases past MIN_WAIT are approved around now.
-    // ANCHOR_LAG adds headroom so we do not overpromise "today".
-    ANCHOR_LAG:            4,     // days after today
+    // Older group queue. BACKLOG_CENTER is the median application date of
+    // older-group approvals in the week of BACKLOG_CENTER_WEEK.
+    BACKLOG_CENTER:        '2026-04-02',
+    BACKLOG_CENTER_WEEK:   '2026-09-21',
+    PACE_MID:              11.5,  // application-days per week, 9-week trend
+    PACE_SLOW:             5.7,   // application-days per week, last 4 weeks
 
-    // Window around the estimate.
-    //
-    // WIDENED Sep 2026. The previous window (-10/+21) was sized from the
-    // spread of recent applicants only, which understated real uncertainty.
-    // Measuring the actual spread across ~29,500 cases, grouped by
-    // application date and measured against each date's median approval,
-    // gives: p25 -13, p75 +8, p10 -38, p90 +34.
-    //
-    // Coverage of the old window was only 58% of real approvals. The new
-    // -20/+35 window covers about 71%. It looks less precise because the
-    // underlying process genuinely is less precise than the old window
-    // implied.
-    BAND_LOW:              20,    // days before the midpoint
-    BAND_HIGH:             35,    // days after the midpoint
+    // Past this many days, a case is well outside the normal pattern.
+    VERY_OLD:              270,   // days
 
-    // NOTE ON MODEL VALIDATION: earlier versions cited an R^2 of 1.000 on a
-    // fit of wait time against application date. That figure is an arithmetic
-    // artifact, not validation: within a single approval week the approval
-    // date is nearly constant, so wait time is forced to be linear in
-    // application date with slope -1. The same fit returns R^2 ~ 1.000 on
-    // randomly generated data. It has been removed as a quality measure.
-    //
-    // What is actually checked now: whether the median point estimate lands
-    // near observed approvals, and whether the band covers a realistic share
-    // of cases (currently ~71%).
-    //
-    // KNOWN LIMITATION: this data contains approved cases only. Applications
-    // still pending are invisible to it, so the estimate describes when
-    // approved cases were approved, not the odds that any given case will be.
+    ANCHOR_LAG:            4,     // days of headroom when "around now"
+    // Window around the midpoint. Measured across ~29,500 cases, a -20/+35
+    // window covers about 71% of real approvals for a given date.
+    BAND_LOW:              20,
+    BAND_HIGH:             35,
 
-    N_WEEKS:               31,
-    N_CASES:               48814,
+    N_WEEKS:               33,
+    N_CASES:               52274,
   };
   // =====================================================================
 
   const fmt = d => d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
-  const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+  const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+Math.round(n)); return x; };
   const dayDiff = (a,b) => Math.round((b-a)/86400000);
   const todayMid = () => { const t=new Date(); t.setHours(0,0,0,0); return t; };
-  // USCIS does not approve cases on weekends, so roll any Saturday or Sunday
-  // estimate forward to the following Monday.
+  // USCIS does not approve cases on weekends, so roll Saturday or Sunday
+  // estimates forward to the following Monday.
   const toWeekday = d => { const x=new Date(d); const g=x.getDay(); if(g===6){x.setDate(x.getDate()+2);} else if(g===0){x.setDate(x.getDate()+1);} return x; };
+  const later = (a,b) => (a > b ? a : b);
 
   const LATEST_AW = new Date(D.LATEST_APPROVAL_WEEK + 'T00:00:00');
+  const C0 = new Date(D.BACKLOG_CENTER + 'T00:00:00');
+  const W0 = new Date(D.BACKLOG_CENTER_WEEK + 'T00:00:00');
+
+  // Where the center of the older group is projected to be on a given day.
+  function centerOn(t, pace) {
+    const weeks = Math.max(0, dayDiff(W0, t)) / 7;
+    return addDays(C0, weeks * pace);
+  }
+  // Day the older-group center is projected to reach application date sd.
+  function reachDate(sd, today, pace) {
+    const gap = dayDiff(centerOn(today, pace), sd);
+    return gap <= 0 ? today : addDays(today, gap / pace * 7);
+  }
+
+  function estimate(sd, today) {
+    const age = dayDiff(sd, today);
+    const soon = addDays(today, D.ANCHOR_LAG);
+    let zone, mid, high;
+
+    if (age < D.MIN_WAIT) {
+      zone = 'fast';
+      mid = addDays(sd, D.MIN_WAIT);
+      high = addDays(mid, D.BAND_HIGH);
+    } else if (age <= D.FAST_MAX) {
+      zone = 'fastwin';
+      mid = soon;
+      // Far end shows the older-group timeline in case the fast track is missed.
+      high = later(addDays(mid, D.BAND_HIGH), reachDate(sd, today, D.PACE_MID));
+    } else {
+      const midReach = reachDate(sd, today, D.PACE_MID);
+      const slowReach = reachDate(sd, today, D.PACE_SLOW);
+      mid = later(midReach, soon);
+      high = later(addDays(mid, D.BAND_HIGH), slowReach);
+      if (age > D.VERY_OLD) zone = 'veryold';
+      else if (sd <= centerOn(today, D.PACE_MID)) zone = 'behind';
+      else if (dayDiff(today, midReach) <= 21) zone = 'current';
+      else zone = 'gap';
+    }
+    let low = addDays(mid, -D.BAND_LOW);
+    if (low < today) low = today;
+    return { zone, age, mid: toWeekday(mid), low: toWeekday(low), high: toWeekday(high) };
+  }
 
   function render() {
     const out = document.getElementById('output');
@@ -177,52 +200,41 @@
     if (isNaN(sd)) { out.innerHTML = '<div class="note">Pick the date you submitted your application above to see an estimate.</div>'; note.innerHTML=''; return; }
 
     const today = todayMid();
+    const e = estimate(sd, today);
+    const daysOut = dayDiff(today, e.mid);
+    const waitDays = dayDiff(sd, e.mid);
 
-    // Anchor: approvals are landing around now (with a little headroom).
-    // Floor: brand-new applications still need MIN_WAIT days.
-    const anchor = addDays(today, D.ANCHOR_LAG);
-    const floorDate = addDays(sd, D.MIN_WAIT);
-    const rawMid = (floorDate > anchor) ? floorDate : anchor;
+    const T = {
+      fast:    ['<div class="tag soon">Fast track</div>',
+        `You applied recently, so you are in the group USCIS usually approves fastest. Recent applications have been approved in about ${D.MIN_WAIT} days, and that has held steady for over two months. If you are not approved by about ${D.FAST_MAX} days after applying, you have most likely missed the fast track, and the estimate will shift to the older group's timeline.`],
+      fastwin: ['<div class="tag soon">Fast track window</div>',
+        `You are past the typical fast-track wait but still inside the window where most fast-track approvals happen, so your approval could come any day. If it has not come by about ${D.FAST_MAX} days after you applied, you have most likely missed the fast track and will be approved when the older group reaches your date, which is why the far end of the window is later.`],
+      behind:  ['<div class="tag soon">Older group, being worked now</div>',
+        `Your date is at or behind the center of the older applications USCIS is working on right now. People from your month are being approved every week. If you applied early in the year, you are in the slower part of your month's group, so your case may be one that needs extra time, but it is still being worked on.`],
+      current: ['<div class="tag soon">Older group, coming up</div>',
+        `Your date is just ahead of the center of the older applications USCIS is working on, so the older group is reaching dates like yours now.`],
+      gap:     ['<div class="tag wait">Waiting for the older group</div>',
+        `You applied long enough ago that the fast track has most likely passed you, but the older group has not reached your date yet. This is the group with the fewest approvals right now. The estimate is when the older group is expected to reach your date at its recent pace. The far end of the window uses the slower pace from the last month, in case things stay slow.`],
+      veryold: ['<div class="tag wait">Well outside the normal pattern</div>',
+        `Very few cases this old are still being approved each week. If your case is still pending, something specific to it is most likely holding it, such as additional review or a request for evidence. It may be worth contacting USCIS or an immigration attorney.`],
+    };
+    const [tag, why] = T[e.zone];
 
-    // USCIS only approves on weekdays, so roll weekend estimates to Monday.
-    const mid = toWeekday(rawMid);
-    let low = addDays(mid, -D.BAND_LOW);
-    if (low < today) low = today; // do not show past dates
-    low = toWeekday(low);
-    const high = toWeekday(addDays(mid, D.BAND_HIGH));
-    const midDaysOut = dayDiff(today, mid);
-    const waitDays = dayDiff(sd, mid);
-
-    let tag, timing, mode;
-    if (rawMid.getTime() === anchor.getTime()) {
-      // Caught-up case: they applied long enough ago that they are in the wave now.
-      tag = '<div class="tag soon">You are in the catch-up wave</div>';
-      timing = `Your application has been in the system long enough that, at the current pace, cases like yours are being approved right around now. It could realistically come any day, and most land within about three weeks.`;
-      mode = 'caught';
-    } else if (midDaysOut <= 14) {
-      tag = '<div class="tag soon">Coming up soon</div>';
-      timing = `That is very soon, roughly ${midDaysOut} days from today.`;
-      mode = 'floor';
-    } else {
-      tag = '<div class="tag">Estimated approval</div>';
-      timing = `That is about ${midDaysOut} days from today.`;
-      mode = 'floor';
-    }
+    const timing = daysOut <= 0 ? `That is right around now.` : `That is about ${daysOut} days from today.`;
 
     out.innerHTML = `
       ${tag}
-      <div class="headline">${fmt(low)} to ${fmt(high)}</div>
+      <div class="headline">${fmt(e.low)} to ${fmt(e.high)}</div>
       <div class="headline-sub">Estimated approval window</div>
       <div class="result-row"><span class="label">You submitted</span><span class="val">${fmt(sd)}</span></div>
-      <div class="result-row"><span class="label">Most likely approval</span><span class="val">around ${fmt(mid)}</span></div>
+      <div class="result-row"><span class="label">Most likely approval</span><span class="val">around ${fmt(e.mid)}</span></div>
       <div class="result-row"><span class="label">Estimated total wait</span><span class="val">about ${waitDays} days</span></div>
     `;
 
-    const howItWorks = `Here is how the estimate works right now. USCIS is approving cases in huge weekly waves and has essentially caught up on its backlog. In the latest data, applications from every month, old and new alike, are being approved around the same time. So there are only two questions that matter: has your application been in the system for the minimum processing time (about ${D.MIN_WAIT} days), and if so, you are in the wave and your approval should land around now.`;
-    const floorNote = (mode === 'floor')
-      ? ` Since you applied recently, your estimate is simply your submission date plus that minimum processing time. ${timing}`
-      : ` ${timing}`;
-    note.innerHTML = howItWorks + floorNote + ` About the window: it is deliberately wide, covering roughly 7 in 10 cases. Real approvals for the same application date spread out over about two months, so a narrow window would look more precise than the process actually is. This assumes USCIS keeps up its current pace, which can change. And remember this is an average across thousands of cases, not a promise about yours. Your own case can move faster or slower depending on your background check, RFEs, country of origin, and other factors.`;
+    note.innerHTML = `${why} ${timing} ` +
+      `How this works: USCIS is running two tracks. New applications are usually approved in about a month. Older applications are worked through roughly month by month, and right now the center of that group is around applications from ${fmt(centerOn(today, D.PACE_MID))}. ` +
+      `The window is deliberately wide, covering roughly 7 in 10 cases, because real approvals for the same date spread out over about two months. ` +
+      `This is an average across thousands of cases, not a promise about yours. My data only includes approved cases, so it cannot measure the odds for a case that is still pending. Your own case can move faster or slower depending on your background check, RFEs, country of origin, and other factors.`;
   }
 
   document.addEventListener('DOMContentLoaded', () => {
