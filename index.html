@@ -87,17 +87,23 @@
   // =====================================================================
   // TWO-TRACK QUEUE MODEL (rebuilt late September 2026).
   //
-  // Nine weeks of data (Jul 27 to Sep 25) show USCIS running two tracks:
+  // Ten weeks of data (Jul 27 to Oct 3) show USCIS running two tracks:
   //
-  //  1. FAST TRACK. About 1 in 5 approvals each week goes to applications
-  //     filed within the last month or so, approved in the mid to high 20s
-  //     of days. This has held steady all summer.
+  //  1. FAST TRACK. About 1 in 5 or 6 approvals each week goes to
+  //     applications filed within the last month or so, approved in the mid
+  //     to high 20s of days. This has held steady all summer and fall.
   //
   //  2. OLDER GROUP. Everything else is worked through roughly month by
   //     month. The center of the older group being approved moved from
-  //     early January (late July) to early April (late September): about
-  //     11.5 application-days per calendar week over nine weeks, but only
-  //     about 5.7 per week over the last month.
+  //     early January (late July) to late March / early April (late
+  //     September): about 9.6 application-days per calendar week over ten
+  //     weeks. Since late August it has barely moved forward (Apr 2, Mar 27,
+  //     Apr 2, then Mar 20 in the Sep 28 week, when a large batch of
+  //     January and February applications was approved). The slow pace below
+  //     uses the six-week trend (Aug 24 to Oct 3), about 5.2 per week. The
+  //     4 to 5 week trend is near zero, but it is pulled down by that one
+  //     older batch, and a near-zero pace would push estimates out
+  //     indefinitely. If the next weeks also stall, lower PACE_SLOW.
   //
   // Between them sits a gap: applications about 2 to 3 months old that were
   // not caught by the fast track and have not yet been reached by the older
@@ -110,21 +116,30 @@
   // cases were approved, not the odds that any given case will be.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:  '2026-09-25',
+    LATEST_APPROVAL_WEEK:  '2026-10-03',
 
-    // Fast track: median wait for recent applications, four complete weeks
-    // pooled (Sep 2 to Sep 25, 1,459 cases): p25 23, median 27, p75 32.
-    MIN_WAIT:              27,    // days
+    // Fast track, measured from the receipt notice: median 28 days
+    // (five complete weeks, Aug 31 to Oct 3; 28 in four of the five).
+    MIN_WAIT:              28,    // days
+
+    // CALIBRATION TO USCIS (Sep 2026). USCIS publishes the 80th percentile of
+    // receipt-to-decision time for cases completed in the past six months:
+    // 7 months (about 213 days) for I-821D. Over the six months ending Oct 3
+    // this data's 80th percentile is about 203 days. The ~10 day gap matches this data
+    // sometimes starting a case's clock at a later status update, so a
+    // person's submission date is shifted by CLOCK_ADJ before placing it on
+    // the older-group queue.
+    CLOCK_ADJ:             10,    // days
     // Past this many days without approval, the fast track has most likely
     // been missed (fast-track waits thin out after about 60 days).
     FAST_MAX:              60,    // days
 
     // Older group queue. BACKLOG_CENTER is the median application date of
     // older-group approvals in the week of BACKLOG_CENTER_WEEK.
-    BACKLOG_CENTER:        '2026-04-02',
-    BACKLOG_CENTER_WEEK:   '2026-09-21',
-    PACE_MID:              11.5,  // application-days per week, 9-week trend
-    PACE_SLOW:             5.7,   // application-days per week, last 4 weeks
+    BACKLOG_CENTER:        '2026-03-20',
+    BACKLOG_CENTER_WEEK:   '2026-09-28',
+    PACE_MID:              9.6,   // application-days per week, 10-week trend
+    PACE_SLOW:             5.2,   // application-days per week, last 6 weeks
 
     // Past this many days, a case is well outside the normal pattern.
     VERY_OLD:              270,   // days
@@ -135,8 +150,8 @@
     BAND_LOW:              20,
     BAND_HIGH:             35,
 
-    N_WEEKS:               33,
-    N_CASES:               52274,
+    N_WEEKS:               34,
+    N_CASES:               54981,
   };
   // =====================================================================
 
@@ -179,13 +194,15 @@
       // Far end shows the older-group timeline in case the fast track is missed.
       high = later(addDays(mid, D.BAND_HIGH), reachDate(sd, today, D.PACE_MID));
     } else {
-      const midReach = reachDate(sd, today, D.PACE_MID);
-      const slowReach = reachDate(sd, today, D.PACE_SLOW);
+      // Place the submission date on the queue in the data's own date terms.
+      const sdq = addDays(sd, D.CLOCK_ADJ);
+      const midReach = reachDate(sdq, today, D.PACE_MID);
+      const slowReach = reachDate(sdq, today, D.PACE_SLOW);
       mid = later(midReach, soon);
       high = later(addDays(mid, D.BAND_HIGH), slowReach);
       if (age > D.VERY_OLD) zone = 'veryold';
-      else if (sd <= centerOn(today, D.PACE_MID)) zone = 'behind';
-      else if (dayDiff(today, midReach) <= 21) zone = 'current';
+      else if (sdq <= centerOn(today, D.PACE_MID)) zone = 'behind';
+      else if (dayDiff(today, midReach) <= 35) zone = 'current';
       else zone = 'gap';
     }
     let low = addDays(mid, -D.BAND_LOW);
@@ -232,7 +249,7 @@
     `;
 
     note.innerHTML = `${why} ${timing} ` +
-      `How this works: USCIS is running two tracks. New applications are usually approved in about a month. Older applications are worked through roughly month by month, and right now the center of that group is around applications from ${fmt(centerOn(today, D.PACE_MID))}. ` +
+      `How this works: USCIS is running two tracks. USCIS currently says 80% of DACA renewals finish within 7 months, and this data lines up with that closely. New applications are usually approved in about a month. Older applications are worked through roughly month by month, and right now the center of that group is around applications from ${fmt(centerOn(today, D.PACE_MID))}. ` +
       `The window is deliberately wide, covering roughly 7 in 10 cases, because real approvals for the same date spread out over about two months. ` +
       `This is an average across thousands of cases, not a promise about yours. My data only includes approved cases, so it cannot measure the odds for a case that is still pending. Your own case can move faster or slower depending on your background check, RFEs, country of origin, and other factors.`;
   }
