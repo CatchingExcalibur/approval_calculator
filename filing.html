@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DACA Filing Planner</title>
+<style>
+  :root{
+    --bg:#fafaf7; --surface:#ffffff; --text:#1a1a18; --muted:#6b6b66;
+    --border:#e6e3da; --accent:#185fa5; --accent-bg:#e6f1fb;
+    --warn:#854f0b; --warn-bg:#faeeda; --danger:#a32d2d; --danger-bg:#fcebeb;
+    --success:#3b6d11; --success-bg:#eaf3de;
+    --radius:12px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg);color:var(--text);margin:0;padding:24px;line-height:1.55}
+  .wrap{max-width:680px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  .subtitle{color:var(--muted);font-size:14px;margin-bottom:6px}
+  .source-badge{font-size:12px;color:var(--muted);margin-bottom:16px}
+  .source-badge strong{color:var(--accent);font-weight:600}
+  .welcome{background:var(--accent-bg);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);line-height:1.5}
+  .welcome a{color:var(--accent);font-weight:600;text-decoration:underline}
+  .newbanner{background:var(--success-bg);border:1px solid var(--success);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:24px;font-size:13px;color:var(--success);line-height:1.5}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+  .field label{font-size:13px;color:var(--muted);font-weight:500}
+  input[type="date"]{padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:15px;font-family:inherit;background:var(--surface);color:var(--text)}
+  input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+  .result-row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;gap:12px}
+  .result-row:last-child{border-bottom:0}
+  .result-row .label{color:var(--muted);flex-shrink:0}
+  .result-row .val{font-weight:500;text-align:right}
+  .headline{font-size:26px;font-weight:600;margin:4px 0 2px}
+  .headline-sub{font-size:13px;color:var(--muted);margin-bottom:16px}
+  .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;margin-bottom:10px;background:var(--accent-bg);color:var(--accent)}
+  .tag.soon{background:var(--success-bg);color:var(--success)}
+  .tag.wait{background:var(--warn-bg);color:var(--warn)}
+  .note{font-size:12px;color:var(--muted);margin-top:16px;line-height:1.6}
+  .disclaimer{font-size:12px;color:var(--muted);margin-top:24px;padding:14px;background:var(--bg);border-radius:var(--radius-sm);line-height:1.6;border:1px solid var(--border)}
+  .disclaimer strong{color:var(--accent);font-weight:600}
+  .data-stamp{font-size:11px;color:var(--muted);text-align:center;margin-top:16px}
+  .links{font-size:13px;text-align:center;margin-top:8px}
+  .links a{color:var(--accent);font-weight:600;text-decoration:none}
+
+  .opt{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  .opt th{font-weight:600;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:1px solid var(--border);font-size:12px}
+  .opt td{padding:10px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+  .opt tr:last-child td{border-bottom:0}
+  .opt .when{font-weight:600}
+  .opt .when small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+  .ok{color:var(--success)} .gap{color:var(--danger);font-weight:600} .tight{color:var(--warn)}
+  .opt tr.rec td{background:var(--accent-bg)}
+  .slowbanner{background:var(--warn-bg);border:1px solid var(--warn);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--warn);line-height:1.5}
+  .need{margin-top:12px;padding:10px 12px;border-radius:var(--radius-sm);background:var(--bg);border:1px solid var(--border);font-size:13px}
+  .tablewrap{overflow-x:auto}
+  .card h2{font-size:16px;font-weight:600;margin:0 0 4px}
+  .card .sub{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .tag.wait{background:var(--warn-bg);color:var(--warn)}
+  .tag.bad{background:var(--danger-bg);color:var(--danger)}
+  input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>When should I file my DACA renewal?</h1>
+<div class="subtitle">Enter the date your current DACA expires, and this suggests when to file based on how long approvals are taking now and what happens if the current slowdown keeps going.</div>
+<div class="source-badge">Data sourced from <strong>MyCasesHub</strong>. A planning tool, not a guarantee.</div>
+
+<div class="slowbanner">
+  This planner assumes the recent slowdown keeps going at the same pace it has had for the last six weeks. If USCIS speeds back up, these dates are cautious, and filing on the earlier side will simply mean you are done sooner.
+</div>
+
+<div class="card">
+  <div class="field" style="margin-bottom:0">
+    <label for="expDate">The date your current DACA expires</label>
+    <input type="date" id="expDate">
+    <div class="note" style="margin-top:4px">You can find this on your current I-797 approval notice or your work permit.</div>
+  </div>
+  <div id="output" class="card" style="margin-top:16px;margin-bottom:0"></div>
+</div>
+
+<div class="card" id="optCard" style="display:none">
+  <h2>What happens depending on when you file</h2>
+  <div class="sub">Each row shows when you would likely be approved compared to your expiration date if the slowdown continues. The three columns are the three ways your case can go.</div>
+  <div class="tablewrap"><table class="opt" id="optTable"></table></div>
+  <div class="need" id="needLine"></div>
+</div>
+
+<div class="note" id="explainNote"></div>
+
+<div class="disclaimer">
+  This is only an estimate based on recent approval data sourced from <strong>MyCasesHub</strong>. It is not official USCIS guidance or legal advice.
+  USCIS recommends filing between 150 and 120 days before your DACA expires. Filing earlier than that may be rejected and returned, and if an early
+  filing is approved, your new two years can start before your current DACA ends. DACA work permits are not automatically extended while a renewal
+  is pending. For advice about your own situation, please talk to an immigration attorney.
+</div>
+
+<div class="data-stamp" id="dataStamp"></div>
+<div class="links"><a href="index.html">Approval estimator</a> &nbsp;&nbsp; <a href="updates.html">Updates and background</a></div>
+
+</div>
+
+<script>
+  // =====================================================================
+  // FILING-DATE PLANNER, SLOWDOWN VERSION (rebuilt Oct 8, 2026, not yet
+  // published). Built from ten weeks of approvals (Jul 27 to Oct 3).
+  //
+  // Input: the date a person's current DACA expires.
+  // Output: when to file, the chance of approval before expiration, and
+  // what happens at several filing dates, ASSUMING THE CURRENT SLOWDOWN
+  // CONTINUES at the same rate.
+  //
+  // Two tracks:
+  //   FAST TRACK: about 19% of approvals each week (ten-week average),
+  //     approved in about 28 days from receipt (p90 about 46). Assumed to
+  //     be unaffected by the slowdown, as it has been all along.
+  //   OLDER GROUP: filings that miss the fast track are approved when the
+  //     older group reaches them.
+  //
+  // The slowdown, measured the same way the approval estimator treats it:
+  //   The older group's typical wait fell through August (catching up),
+  //   then turned. Over the last six weeks (Aug 24 to Oct 3) it rose by
+  //   about 1.8 days per week, which is the same as the older group moving
+  //   forward only about 5.2 application-days per week (the estimator's
+  //   PACE_SLOW). The six-week trend line puts today's typical older-group
+  //   wait at about 182 days in this data's terms, about 192 from receipt
+  //   after the +10 day USCIS calibration.
+  //
+  //   If that continues, the line keeps growing while a person waits in
+  //   it. For someone whose wait would be W if they filed on the base date,
+  //   filing `weeks` later gives:
+  //       wait = (W + SLOWDOWN * weeks) / (1 - SLOWDOWN / 7)
+  //   The division is the part people miss: every week you wait, the
+  //   front of the line also slips back by SLOWDOWN days.
+  //
+  //   Cases being approved at a future date will show waits SLOWDOWN days
+  //   per week longer than today. That gives a check: if the slowdown is
+  //   real and continuing, USCIS's published 80% time (a six-month trailing
+  //   figure, 7 months as of Sep 2026) should keep rising.
+  //
+  // This is a stress test built on six weeks of trend, not a prediction.
+  // A surge like June's would make every number here too cautious.
+  // Update the constants weekly.
+  // =====================================================================
+  const D = {
+    LATEST_APPROVAL_WEEK: '2026-10-03',   // also the base date for the slowdown
+
+    USCIS_P80:      213,  // days, USCIS published 80% completion time (7 months)
+
+    FAST_WAIT:      28,   // days, fast track median from receipt
+    P_FAST:         0.19, // fast-track share of approvals, ten-week average
+    // Fast-track waits from receipt (Aug 31 to Oct 3) at these percentiles.
+    FAST_P: [0, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 1],
+    FAST_Q: [20, 23,   24,   26,   28,   33,   46,   50,   60],
+
+    OLDER_TYPICAL:  192,  // days from receipt, older group median today (trend line)
+    OLDER_SLOW:     224,  // days from receipt, older group 75th percentile today
+    // Older-group waits from receipt at the 0th, 5th, ..., 100th percentile.
+    // Shape from the last four weeks (Sep 7 to Oct 3), centered on the
+    // six-week trend value, +10 day USCIS calibration.
+    OLDER_Q: [79,103,124,137,149,158,167,176,183,187,192,197,203,211,216,224,236,245,251,265,320],
+
+    SLOWDOWN:       1.8,  // days per week the older group falls further behind
+
+    TARGET:         0.80, // chance used for the "file by" line
+    WINDOW_OPEN:    150,  // USCIS recommended window opens (days before expiry)
+    WINDOW_CLOSE:   120,  // USCIS recommended window closes
+    RENEW_GRACE:    365,  // can still file as a renewal up to 1 year after expiry
+    FAR_OUT:        183,  // filing dates further out than this are much less certain
+
+    N_WEEKS:        34,
+    N_CASES:        54981,
+  };
+  // =====================================================================
+
+  const fmt = d => d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+  const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+Math.round(n)); return x; };
+  const dayDiff = (a,b) => Math.round((b-a)/86400000);
+  const todayMid = () => { const t=new Date(); t.setHours(0,0,0,0); return t; };
+  const toWeekday = d => { const x=new Date(d); const g=x.getDay(); if(g===6){x.setDate(x.getDate()+2);} else if(g===0){x.setDate(x.getDate()+1);} return x; };
+  const pct = x => `about ${Math.round(x * 20) * 5}%`;
+  const months = d => `${(d / 30.44).toFixed(1).replace(/\.0$/,'')} months`;
+  const anA = n => (n === 8 || n === 11 || n === 18 || n === 80 || n === 85 || (n >= 80 && n < 90)) ? 'an' : 'a';
+
+  const BASE = new Date(D.LATEST_APPROVAL_WEEK + 'T00:00:00');
+  const G = D.SLOWDOWN;
+  const SHRINK = 1 - G / 7;
+  const weeksFromBase = d => Math.max(0, dayDiff(BASE, d)) / 7;
+
+  // Interpolated CDF and quantile for a list of values at given probabilities.
+  function cdfOf(x, qs, ps) {
+    if (x <= qs[0]) return 0;
+    if (x >= qs[qs.length-1]) return 1;
+    for (let i = 1; i < qs.length; i++) {
+      if (x <= qs[i]) return ps[i-1] + (x - qs[i-1]) / (qs[i] - qs[i-1]) * (ps[i] - ps[i-1]);
+    }
+    return 1;
+  }
+  function quantileOf(p, qs, ps) {
+    for (let i = 1; i < ps.length; i++) {
+      if (p <= ps[i]) return qs[i-1] + (p - ps[i-1]) / (ps[i] - ps[i-1]) * (qs[i] - qs[i-1]);
+    }
+    return qs[qs.length-1];
+  }
+  const OLDER_P = D.OLDER_Q.map((_, i) => i * 0.05);
+
+  // Older-group wait for someone filing on fileDate whose base wait is W.
+  const olderWait = (W, fileDate) => (W + G * weeksFromBase(fileDate)) / SHRINK;
+  // Chance an older-group filing made on fileDate is approved within L days.
+  function olderCdf(L, fileDate) {
+    const W = L * SHRINK - G * weeksFromBase(fileDate);
+    return cdfOf(W, D.OLDER_Q, OLDER_P);
+  }
+  const fastCdf = L => cdfOf(L, D.FAST_Q, D.FAST_P);
+
+  // Chance a filing made on fileDate is approved by exp.
+  function chanceInTime(fileDate, exp) {
+    const L = dayDiff(fileDate, exp);
+    return D.P_FAST * fastCdf(L) + (1 - D.P_FAST) * olderCdf(L, fileDate);
+  }
+  function waitsFor(fileDate) {
+    return [
+      ['Fast track', D.FAST_WAIT],
+      ['Missed fast track, typical', olderWait(D.OLDER_TYPICAL, fileDate)],
+      ['Missed fast track, slower', olderWait(D.OLDER_SLOW, fileDate)],
+    ];
+  }
+
+  // How long 80% of the cases approved on date t will have waited.
+  function approvedP80On(t) {
+    const pOlder = (0.80 - D.P_FAST) / (1 - D.P_FAST);
+    return quantileOf(pOlder, D.OLDER_Q, OLDER_P) + G * weeksFromBase(t);
+  }
+
+  // Latest filing date (on or after today) that reaches the target chance.
+  function latestSafeDate(exp, today) {
+    const maxLead = dayDiff(today, exp);
+    for (let lead = 0; lead <= maxLead; lead++) {
+      const fd = addDays(exp, -lead);
+      if (chanceInTime(fd, exp) >= D.TARGET) return fd;
+    }
+    return null;
+  }
+
+  function outcome(fileDate, wait, exp) {
+    const appr = toWeekday(addDays(fileDate, wait));
+    const margin = dayDiff(appr, exp);
+    let cls, text;
+    if (margin >= 14)      { cls = 'ok';    text = `${margin} days before it expires`; }
+    else if (margin >= 0)  { cls = 'tight'; text = margin === 0 ? `right on the expiration date` : `only ${margin} day${margin===1?'':'s'} before it expires`; }
+    else                   { cls = 'gap';   text = `about ${-margin}-day gap`; }
+    return `<span class="${cls}">${text}</span><br><small style="color:var(--muted)">approved around ${fmt(appr)}</small>`;
+  }
+
+  function buildTable(exp, today) {
+    const rows = [
+      ['1 year before', 365, 'Well earlier than USCIS recommends', false],
+      ['10 months before', 304, 'Earlier than USCIS recommends', false],
+      ['9 months before', 274, 'Earlier than USCIS recommends', false],
+      ['7 months before', D.USCIS_P80, 'USCIS says 80% of cases finish within 7 months. Earlier than USCIS recommends', false],
+      ['6 months before', 184, 'Earlier than USCIS recommends', false],
+      ['150 days before', D.WINDOW_OPEN, 'Start of the USCIS window', true],
+      ['120 days before', D.WINDOW_CLOSE, 'End of the USCIS window', false],
+    ];
+    const heads = waitsFor(today).map(w => w[0]);
+    let html = `<tr><th>If you file</th><th>Chance approved before it expires</th>${heads.map(x=>`<th>${x}</th>`).join('')}</tr>`;
+    const row = (label, sub, fd, rec) =>
+      `<tr class="${rec?'rec':''}"><td class="when">${label}<small>${sub}</small></td>` +
+      `<td><strong>${pct(chanceInTime(fd, exp))}</strong></td>` +
+      waitsFor(fd).map(w=>`<td>${outcome(fd, w[1], exp)}</td>`).join('') + `</tr>`;
+    const future = rows.filter(r => addDays(exp, -r[1]) >= today);
+    if (future.length < rows.length) {
+      html += row('Today', `${fmt(today)}. The earlier options have already passed`, today, future.length === 0 || !future.some(r=>r[3]));
+    }
+    for (const [label, lead, note, rec] of future) {
+      const fd = addDays(exp, -lead);
+      html += row(label, `${fmt(fd)}. ${note}`, fd, rec);
+    }
+    document.getElementById('optTable').innerHTML = html;
+
+    const safe = latestSafeDate(exp, today);
+    const target = Math.round(D.TARGET * 100);
+    document.getElementById('needLine').innerHTML = safe
+      ? `<strong>For about ${anA(target)} ${target}% chance of approval in time</strong>, file by <strong>${fmt(safe)}</strong>, about ${months(dayDiff(safe, exp))} before your DACA expires${dayDiff(safe, exp) > D.WINDOW_OPEN ? ', which is earlier than USCIS recommends' : ''}.`
+      : `<strong>${anA(target) === 'an' ? 'An' : 'A'} ${target}% chance of approval in time is no longer reachable</strong> for this expiration date if the slowdown continues. Filing as soon as possible gives you the best chance you have.`;
+  }
+
+  function render() {
+    const out = document.getElementById('output');
+    const note = document.getElementById('explainNote');
+    const optCard = document.getElementById('optCard');
+    const exp = new Date(document.getElementById('expDate').value + 'T00:00:00');
+    if (isNaN(exp)) {
+      out.innerHTML = '<div class="note">Enter the date your current DACA expires to see when to file.</div>';
+      note.innerHTML = ''; optCard.style.display = 'none'; return;
+    }
+    const today = todayMid();
+    const open = addDays(exp, -D.WINDOW_OPEN);
+    const close = addDays(exp, -D.WINDOW_CLOSE);
+    const safe = latestSafeDate(exp, today);
+    const untilExp = dayDiff(today, exp);
+    const fileOn = untilExp > D.WINDOW_OPEN ? open : today;
+    const target = Math.round(D.TARGET * 100);
+
+    let tag, head, sub, why;
+    if (untilExp < -D.RENEW_GRACE) {
+      tag = '<div class="tag bad">Expired more than a year ago</div>';
+      head = 'Talk to an immigration attorney';
+      sub = 'This would be treated as a new initial request, not a renewal';
+      why = 'Because your DACA expired more than a year ago, a new filing is treated as an initial request. Under the current court orders, USCIS is accepting these but not processing them. An attorney can tell you what options you have.';
+    } else if (untilExp < 0) {
+      tag = '<div class="tag bad">Already expired</div>';
+      head = 'File as soon as you can';
+      sub = `You can still file as a renewal until ${fmt(addDays(exp, D.RENEW_GRACE))}`;
+      why = 'Your DACA has already expired, so you cannot work until a renewal is approved. You can still file as a renewal for up to one year after expiration. If the slowdown continues, every week you wait adds more than a week to your approval date, so the sooner you file, the better.';
+    } else if (untilExp < D.WINDOW_CLOSE) {
+      tag = '<div class="tag bad">Past the recommended window</div>';
+      head = 'File now';
+      sub = `USCIS recommends filing by ${fmt(close)}, which has passed`;
+      why = 'You are past the date USCIS recommends filing by. USCIS will still accept your renewal, but unless you get the fast track, a gap between your expiration and your approval is likely. File as soon as possible.';
+    } else if (untilExp <= D.WINDOW_OPEN) {
+      tag = '<div class="tag soon">Your filing window is open</div>';
+      head = 'File now';
+      sub = `The USCIS window runs ${fmt(open)} to ${fmt(close)}`;
+      why = 'You are inside the window USCIS recommends. If the slowdown continues, waiting even a few weeks makes a gap more likely, so filing now gives you the most room if your case misses the fast track.';
+    } else {
+      tag = '<div class="tag">Plan ahead</div>';
+      head = `File on ${fmt(open)} at the latest`;
+      sub = 'The first day of the USCIS window, 150 days before your DACA expires';
+      why = safe && safe < open
+        ? `If the slowdown continues, filing on the first day of the USCIS window still leaves a real chance of a gap. If a gap in your work permission would seriously hurt you, filing by ${fmt(safe)} gives you about ${anA(target)} ${target}% chance of approval in time. That is earlier than USCIS recommends, so it may be rejected and returned, and if it is approved early, your new two years start sooner.`
+        : safe
+          ? 'Filing on the first day of the USCIS window gives you the most room within USCIS\'s guidance.'
+          : `If the slowdown continues, even filing today would give you a chance of only ${pct(chanceInTime(today, exp))} of approval before your DACA expires, and most of that comes from the chance of getting the fast track. Filing before the USCIS window may be rejected and returned, so the first day of the window, ${fmt(open)}, is the earliest date within USCIS's guidance. Do not wait past it: if the slowdown continues, every week later adds more than a week to your approval date.`;
+      if (safe && dayDiff(today, safe) > D.FAR_OUT) {
+        why += ` Your dates are more than six months away, and the further out a projection goes, the less certain it is. Check back as your date gets closer, because these numbers update every week.`;
+      }
+    }
+
+    const [, typ, slow] = waitsFor(fileOn);
+    out.innerHTML = `
+      ${tag}
+      <div class="headline">${head}</div>
+      <div class="headline-sub">${sub}</div>
+      <div class="result-row"><span class="label">Your DACA expires</span><span class="val">${fmt(exp)}</span></div>
+      <div class="result-row"><span class="label">USCIS recommended window</span><span class="val">${fmt(open)} to ${fmt(close)}</span></div>
+      <div class="result-row"><span class="label">Chance approved in time if you file ${fileOn === open ? 'on ' + fmt(open) : 'today'}</span><span class="val">${pct(chanceInTime(fileOn, exp))}</span></div>
+      <div class="result-row"><span class="label">Wait if you get the fast track</span><span class="val">about ${D.FAST_WAIT} days</span></div>
+      <div class="result-row"><span class="label">Wait if you miss the fast track</span><span class="val">about ${Math.round(typ[1])} days (${months(typ[1])}), up to ${Math.round(slow[1])} for slower cases</span></div>
+      <div class="result-row"><span class="label">File by this date for ${anA(target)} ${target}% chance</span><span class="val">${safe ? fmt(safe) : 'no longer reachable'}</span></div>
+    `;
+
+    if (untilExp >= -D.RENEW_GRACE) { buildTable(exp, today); optCard.style.display = ''; }
+    else optCard.style.display = 'none';
+
+    const in3 = addDays(today, 91), in6 = addDays(today, 182);
+    note.innerHTML = `${why}<br><br>` +
+      `<strong>What this assumes.</strong> For most of the summer, USCIS was catching up on older applications. Since late August that turned around, and over the last six weeks the typical wait for older applications has grown by about ${D.SLOWDOWN} days every week. This planner assumes that keeps happening. That has a catch: the line keeps growing while you wait in it, so the later you file, the longer your wait. ` +
+      `New applications that get the fast track are still approved in about ${D.FAST_WAIT} days, and this assumes that stays the same. About 1 in 5 approvals each week are fast track, but not everyone gets one, so the table shows every way your case can go.<br><br>` +
+      `<strong>How to tell if this is right.</strong> If the slowdown continues, 80% of the cases being approved will have waited about ${months(approvedP80On(today))} today, about ${months(approvedP80On(in3))} by ${fmt(in3)}, and about ${months(approvedP80On(in6))} by ${fmt(in6)}. USCIS currently publishes 7 months, and because its number averages the past six months, it moves more slowly, but it should keep climbing. If it stays flat or drops, the slowdown has eased and these dates are too cautious. ` +
+      `A sudden surge of approvals, like the weeks in June with over 10,000, would also make these numbers too cautious.<br><br>` +
+      `That is the whole trade-off: file earlier and you may lose some of your new two years, file later and you risk a gap where you cannot work. Only you can weigh which matters more for your situation.`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('expDate').oninput = render;
+    document.getElementById('dataStamp').textContent =
+      `Wait times based on approval data through ${fmt(BASE)}, ${D.N_WEEKS} weeks, ${D.N_CASES.toLocaleString()} cases, sourced from MyCasesHub. Slowdown measured over the last six weeks.`;
+    render();
+  });
+</script>
+</body>
+</html>
