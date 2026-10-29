@@ -87,24 +87,24 @@
   // =====================================================================
   // TWO-TRACK QUEUE MODEL (rebuilt late September 2026).
   //
-  // Twelve weeks of data (Jul 26 to Oct 17) show USCIS running two tracks:
+  // Thirteen weeks of data (Jul 26 to Oct 24) show USCIS running two tracks:
   //
-  //  1. FAST TRACK. About 1 in 5 or 6 approvals each week goes to
-  //     applications filed within the last month or so, approved in the mid
-  //     to high 20s of days. This has held steady all summer and fall.
+  //  1. FAST TRACK. About 1 in 5 approvals each week (more in some weeks)
+  //     goes to applications filed within the last month or so, approved
+  //     in the mid to high 20s of days. This has held steady all summer
+  //     and fall.
   //
   //  2. OLDER GROUP. Everything else is worked through roughly month by
   //     month. The center of the older group being approved moved from
   //     early January (late July) to early April (early September), then
-  //     swung back and forth: Mar 27, Apr 2, Mar 20, Mar 7 (a week with a
-  //     missing Thursday in the export), and Mar 27 in the Oct 11 week.
-  //     Over twelve weeks that is about 6.9 application-days per calendar
-  //     week, close to the line simply keeping pace (7 per week). The slow
-  //     pace below uses the ten-week trend (Aug 9 to Oct 17), about 4.9 per
-  //     week. Shorter windows swing by 20 days week to week and go negative
-  //     over the last six weeks, which would push estimates out without
-  //     limit, so they are not used. If the line keeps slipping, lower
-  //     PACE_SLOW.
+  //     stalled: Mar 27, Apr 2, Mar 20, Mar 7 (a week with a missing
+  //     Thursday in the export), Mar 27, and Mar 27 again in the Oct 18
+  //     week. Over thirteen weeks that is about 6.3 application-days per
+  //     calendar week, a little slower than the line keeping pace (7 per
+  //     week). The slow pace below uses the ten-week trend (Aug 16 to
+  //     Oct 24), about 3.4 per week. Shorter windows are near zero or
+  //     negative, which would push estimates out without limit, so they
+  //     are not used. If the line keeps stalling, lower PACE_SLOW.
   //
   // Between them sits a gap: applications about 2 to 3 months old that were
   // not caught by the fast track and have not yet been reached by the older
@@ -117,20 +117,20 @@
   // cases were approved, not the odds that any given case will be.
   // =====================================================================
   const D = {
-    LATEST_APPROVAL_WEEK:  '2026-10-17',
+    LATEST_APPROVAL_WEEK:  '2026-10-23',
 
     // Fast track, measured from the receipt notice: median 29 days
-    // (five weeks, Sep 13 to Oct 17; weekly medians 28, 30, 28, 28, 29).
+    // (five weeks, Sep 20 to Oct 24; weekly medians 30, 28, 28, 29, 27).
     MIN_WAIT:              29,    // days
 
     // CALIBRATION TO USCIS (Sep 2026). USCIS publishes the 80th percentile of
     // receipt-to-decision time for cases completed in the past six months:
-    // 7 months (about 213 days) for I-821D. Over the six months ending Oct 17
-    // this data's 80th percentile is about 200 days. The ~13 day gap matches this data
+    // 7 months (about 213 days) for I-821D. Over the six months ending Oct 24
+    // this data's 80th percentile is about 201 days. The ~12 day gap matches this data
     // sometimes starting a case's clock at a later status update, so a
     // person's submission date is shifted by CLOCK_ADJ before placing it on
     // the older-group queue.
-    CLOCK_ADJ:             13,    // days
+    CLOCK_ADJ:             12,    // days
     // Past this many days without approval, the fast track has most likely
     // been missed (fast-track waits thin out after about 60 days).
     FAST_MAX:              60,    // days
@@ -138,9 +138,9 @@
     // Older group queue. BACKLOG_CENTER is the median application date of
     // older-group approvals in the week of BACKLOG_CENTER_WEEK.
     BACKLOG_CENTER:        '2026-03-27',
-    BACKLOG_CENTER_WEEK:   '2026-10-12',
-    PACE_MID:              6.9,   // application-days per week, 12-week trend
-    PACE_SLOW:             4.9,   // application-days per week, 10-week trend
+    BACKLOG_CENTER_WEEK:   '2026-10-19',
+    PACE_MID:              6.3,   // application-days per week, 13-week trend
+    PACE_SLOW:             3.4,   // application-days per week, 10-week trend
 
     // Past this many days, a case is well outside the normal pattern.
     VERY_OLD:              270,   // days
@@ -151,8 +151,8 @@
     BAND_LOW:              20,
     BAND_HIGH:             35,
 
-    N_WEEKS:               36,
-    N_CASES:               63415,
+    N_WEEKS:               37,
+    N_CASES:               64729,
   };
   // =====================================================================
 
